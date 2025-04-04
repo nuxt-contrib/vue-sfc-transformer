@@ -49,6 +49,15 @@ const transpiledTemplate = await transpileVueTemplate(
 )
 
 console.log(transpiledTemplate)
+// <template>
+//   <div v-if="test" />
+// </template>
+// 
+// <script setup lang="ts">
+// defineProps<{
+//   test?: string
+// }>()
+// </script>
 
 const sfc = parseSFC(transpiledTemplate, {
   filename: 'test.vue',
@@ -57,6 +66,13 @@ const sfc = parseSFC(transpiledTemplate, {
 
 const { content: scriptBlockContents } = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
 console.log(scriptBlockContents)
+
+// defineProps({
+//   test: {
+//     type: String,
+//     required: false
+//   }
+// })
 ```
 
 ## 💻 Development
