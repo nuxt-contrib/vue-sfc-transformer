@@ -44,6 +44,12 @@ describe('transform typescript template', () => {
     ).toEqual(`<div @click="(e) => handleClick(e)" />`)
   })
 
+  it('destructuring', async () => {
+    expect(
+      await fixture(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`),
+    ).toEqual(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`)
+  })
+
   it('custom directives', async () => {
     expect(
       await fixture(`<div v-highlight="(highlight as boolean)" />`),

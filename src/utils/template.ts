@@ -126,12 +126,7 @@ function handleNode(
   }
 }
 
-export async function transpileVueTemplate(
-  content: string,
-  root: RootNode,
-  offset = 0,
-  transform: (code: string) => Promise<string>,
-): Promise<string> {
+export async function transpileVueTemplate(content: string, root: RootNode, offset = 0, transform: (code: string) => Promise<string>): Promise<string> {
   const { MagicString } = await import('vue/compiler-sfc')
   const expressions: Expression[] = []
 
@@ -221,15 +216,16 @@ function getSurrounding(code: string, start: number, end: number) {
     : undefined
 }
 
-async function transformJsSnippet(
-  code: string,
-  transform: (code: string) => Promise<string>,
-): Promise<string> {
+async function transformJsSnippet(code: string, transform: (code: string) => Promise<string>): Promise<string> {
   // `{ key: val } as any` in `<div :style="{ key: val } as any" />` is a valid js snippet,
   // but it can't be transformed.
   // We can warp it with `()` to make it a valid js file
 
-  let res = await transform(`(${code})`)
+  // Check if the code is a v-slot destructuring expression like "{ active, ...slotProps }"
+  // These should not be wrapped in parentheses as Vue template syntax doesn't support it
+  const isObject = /^\s*\{.*\}\s*$/.test(code)
+
+  let res = isObject ? await transform(code) : await transform(`(${code})`)
 
   res = res.trim()
 
