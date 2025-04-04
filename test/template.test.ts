@@ -119,7 +119,7 @@ describe('transform typescript template', () => {
 
   async function fixture(src: string) {
     const requireFromVue = createRequire(resolveModulePath('vue'))
-    const { parse } = requireFromVue('@vue/compiler-dom') as typeof import('@vue/compiler-dom-types')
+    const { parse } = requireFromVue('@vue/compiler-dom') as typeof import('@vue/compiler-dom')
 
     return await transpileVueTemplate(
       src,
