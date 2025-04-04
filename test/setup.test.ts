@@ -62,6 +62,34 @@ describe('transform typescript script setup', () => {
     `)
   })
 
+  it('strips generic from script setup blocks', async () => {
+    expect(
+      await fixture(
+        `
+        <script setup lang="ts" generic="T extends Messages = Messages">
+        interface AppProps<T extends string = string> {
+          locale?: Array<T>
+        }
+        const props = defineProps<AppProps<T>>()
+        </script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup>
+
+              interface AppProps<T extends string = string> {
+                locale?: Array<T>
+              }
+              const props = defineProps({
+        locale: {
+          type: Array,
+          required: false
+        }
+      })
+              
+      </script>"
+    `)
+  })
+
   it('withDefaults', async () => {
     expect(
       await fixture(

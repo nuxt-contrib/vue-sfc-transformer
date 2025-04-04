@@ -167,24 +167,18 @@ function defineDefaultBlockLoader(options: DefaultBlockLoaderOptions): VueBlockL
       return
     }
 
-    const lang
-      = typeof block.attrs.lang === 'string'
-        ? block.attrs.lang
-        : options.defaultLang
+    const lang = typeof block.attrs.lang === 'string' ? block.attrs.lang : options.defaultLang
     const extension = `.${lang}`
 
-    const files
-      = (await loadFile({
-        getContents: () => block.content,
-        path: `${rawInput.path}${extension}`,
-        srcPath: `${rawInput.srcPath}${extension}`,
-        extension,
-      })) || []
+    const files = await loadFile({
+      getContents: () => block.content,
+      path: `${rawInput.path}${extension}`,
+      srcPath: `${rawInput.srcPath}${extension}`,
+      extension,
+    }) || []
 
-    const blockOutputFile = files.find(
-      f =>
-        f.extension === `.${options.defaultLang}`
-        || options.validExtensions?.includes(f.extension as string),
+    const blockOutputFile = files.find(f =>
+      f.extension === `.${options.defaultLang}` || options.validExtensions?.includes(f.extension as string),
     )
     if (!blockOutputFile) {
       return
@@ -193,7 +187,7 @@ function defineDefaultBlockLoader(options: DefaultBlockLoaderOptions): VueBlockL
 
     return {
       type: block.type,
-      attrs: toOmit(block.attrs, 'lang'),
+      attrs: toOmit(block.attrs, ['lang', 'generic']),
       content: blockOutputFile.contents!,
     }
   }
@@ -259,11 +253,6 @@ export const vueLoader = defineVueLoader({
 function cleanupBreakLine(str: string): string {
   return str.replaceAll(/(\n\n)\n+/g, '\n\n').replace(/^\s*\n|\n\s*$/g, '')
 }
-function toOmit<R extends Record<keyof object, unknown>, K extends keyof R>(
-  record: R,
-  toRemove: K,
-): Omit<R, K> {
-  return Object.fromEntries(
-    Object.entries(record).filter(([key]) => key !== toRemove),
-  ) as Omit<R, K>
+function toOmit<R extends Record<keyof object, unknown>, K extends keyof R>(record: R, toRemove: K[]): Omit<R, K> {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !toRemove.includes(key as K))) as Omit<R, K>
 }
