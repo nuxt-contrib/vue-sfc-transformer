@@ -66,6 +66,10 @@ console.log(scriptBlockContents)
 - Install dependencies using `pnpm install`
 - Run interactive tests using `pnpm dev`
 
+## Credits
+
+This package was based on the work of contributors to [`mkdist`](https://github.com/unjs/mkdist), and in particular this PR by [**@Teages**](https://github.com/teages): [unjs/mkdist#300](https://github.com/unjs/mkdist/pull/300).
+
 ## License
 
 Made with ❤️
