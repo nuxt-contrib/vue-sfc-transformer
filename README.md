@@ -75,6 +75,12 @@ console.log(scriptBlockContents)
 // })
 ```
 
+If you are using `mkdist`, `vue-sfc-transformer` exports a loader you can use:
+
+```ts
+import { vueLoader } from 'vue-sfc-transformer/mkdist'
+```
+
 ## 💻 Development
 
 - Clone this repository
