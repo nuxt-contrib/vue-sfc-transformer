@@ -30,19 +30,32 @@
     "test:versions": "installed-check -d --no-workspaces",
     "test:types": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "vue": "^3.5.13"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.27.0",
+    "@babel/parser": "^7.27.0"
+  },
   "devDependencies": {
     "@antfu/eslint-config": "latest",
+    "@babel/types": "^7.27.0",
+    "@types/babel__generator": "^7.27.0",
     "@vitest/coverage-v8": "latest",
+    "@vue/compiler-dom-types": "npm:@vue/compiler-dom@^3.5.13",
     "bumpp": "latest",
     "changelogithub": "latest",
+    "esbuild": "^0.25.2",
     "eslint": "latest",
+    "exsolve": "^1.0.4",
     "installed-check": "latest",
     "knip": "latest",
     "lint-staged": "latest",
     "simple-git-hooks": "latest",
     "typescript": "latest",
     "unbuild": "latest",
-    "vitest": "latest"
+    "vitest": "latest",
+    "vue": "^3.5.13"
   },
   "resolutions": {
     "vue-sfc-transformer": "link:."
