@@ -2,3 +2,6 @@ packages:
   - playground
 ignoredBuiltDependencies:
   - '@parcel/watcher'
+  - esbuild
+onlyBuiltDependencies:
+  - simple-git-hooks
