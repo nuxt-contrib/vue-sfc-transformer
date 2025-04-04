@@ -70,7 +70,7 @@ importers:
         specifier: latest
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.10.5)(sass@1.86.3)
       vue:
-        specifier: ^3.5.13
+        specifier: 3.5.13
         version: 3.5.13(typescript@5.8.2)
 
   playground:
