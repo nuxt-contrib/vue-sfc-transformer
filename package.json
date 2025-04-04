@@ -22,6 +22,9 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=6.9.0"
+  },
   "scripts": {
     "build": "unbuild",
     "dev": "vitest dev",
