@@ -126,12 +126,7 @@ function handleNode(
   }
 }
 
-export async function transpileVueTemplate(
-  content: string,
-  root: RootNode,
-  offset = 0,
-  transform: (code: string) => Promise<string>,
-): Promise<string> {
+export async function transpileVueTemplate(content: string, root: RootNode, offset = 0, transform: (code: string) => Promise<string>): Promise<string> {
   const { MagicString } = await import('vue/compiler-sfc')
   const expressions: Expression[] = []
 
@@ -221,13 +216,10 @@ function getSurrounding(code: string, start: number, end: number) {
     : undefined
 }
 
-async function transformJsSnippet(
-  code: string,
-  transform: (code: string) => Promise<string>,
-): Promise<string> {
+async function transformJsSnippet(code: string, transform: (code: string) => Promise<string>): Promise<string> {
   // `{ key: val } as any` in `<div :style="{ key: val } as any" />` is a valid js snippet,
   // but it can't be transformed.
-  // We can warp it with `()` to make it a valid js file
+  // We can wrap it with `()` to make it a valid js file
   // but if the code is a destructuring assignment, we don't need to wrap it.
   // e.g. `v-slot"{ default }"` is a destructuring assignment, we don't need to wrap it.
 
@@ -242,6 +234,14 @@ async function transformJsSnippet(
   // result will be wrapped in `{content};\n`, we need to remove it
   if (res.endsWith(';')) {
     res = res.slice(0, -1)
+  }
+
+  // Check if the code was a v-slot destructuring expression like "{ active, ...slotProps }"
+  // These should not be wrapped in parentheses as Vue template syntax doesn't support it
+  const isObject = /^\s*\{.*\}\s*$/.test(code)
+  if (isObject) {
+    // Remove the parentheses
+    res = res.match(/^\((.*)\)$/)?.[1] ?? res
   }
 
   return res

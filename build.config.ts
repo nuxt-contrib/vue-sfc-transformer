@@ -4,6 +4,7 @@ export default defineBuildConfig({
   declaration: 'node16',
   externals: [
     '@vue/compiler-dom',
+    'mkdist',
   ],
   rollup: {
     dts: {

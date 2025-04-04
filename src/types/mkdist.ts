@@ -1,5 +1,7 @@
 // TODO: export from mkdist
 
+import type { MkdistOptions } from 'mkdist'
+
 export interface InputFile {
   path: string
   extension: string
@@ -25,6 +27,7 @@ export type LoaderResult = OutputFile[] | undefined
 
 export interface LoaderContext {
   loadFile: (input: InputFile) => LoaderResult | Promise<LoaderResult>
+  options: MkdistOptions
 }
 
 export type Loader = (input: InputFile, context: LoaderContext) => LoaderResult | Promise<LoaderResult>

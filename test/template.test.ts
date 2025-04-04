@@ -44,6 +44,18 @@ describe('transform typescript template', () => {
     ).toEqual(`<div @click="(e) => handleClick(e)" />`)
   })
 
+  it('destructuring', async () => {
+    expect(
+      await fixture(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`),
+    ).toEqual(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`)
+
+    expect(
+      await fixture(
+        `<MyComponent v-slot="{ remaining, duration } as { remaining: number, duration: number }">{{ remaining }}</MyComponent>`,
+      ),
+    ).toMatchInlineSnapshot(`"<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>"`)
+  })
+
   it('custom directives', async () => {
     expect(
       await fixture(`<div v-highlight="(highlight as boolean)" />`),
