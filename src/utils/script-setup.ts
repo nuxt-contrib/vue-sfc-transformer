@@ -23,17 +23,19 @@ const DEFINE_MODEL = 'defineModel'
  * Pre-transpile script setup block to remove type syntax and replace it with runtime declarations.
  * This function only performs minimal error checking, it means that it will preserve all errors that can be triggered at runtime
  */
-export async function preTranspileScriptSetup(sfc: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string): Promise<SFCScriptBlock> {
-  const context = await prepareContext(sfc, id)
+export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string): Promise<SFCScriptBlock> {
+  if (!sfc.scriptSetup) {
+    throw new Error('No script setup block found')
+  }
+  const context = await prepareContext(sfc as SFCDescriptor & { scriptSetup: SFCScriptBlock }, id)
   const resultBuilder = new context.utils.MagicString(sfc.scriptSetup.content)
 
   for (const node of context.ctx.ast) {
     if (node.type === 'ExpressionStatement') {
-      const processedTypeSyntax
-        = processDefineProps(node.expression, context)
-          || processDefineEmits(node.expression, context)
-          || processWithDefaults(node.expression, context)
-          || processDefineModel(node.expression, context)
+      const processedTypeSyntax = processDefineProps(node.expression, context)
+        || processDefineEmits(node.expression, context)
+        || processWithDefaults(node.expression, context)
+        || processDefineModel(node.expression, context)
 
       if (processedTypeSyntax !== undefined) {
         resultBuilder.overwrite(node.start!, node.end!, processedTypeSyntax)
