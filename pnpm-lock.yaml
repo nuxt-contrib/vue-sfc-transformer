@@ -78,6 +78,16 @@ importers:
       vue-sfc-transformer:
         specifier: link:..
         version: link:..
+    devDependencies:
+      '@vue/compiler-dom':
+        specifier: ^3.5.13
+        version: 3.5.13
+      '@vue/compiler-sfc':
+        specifier: ^3.5.13
+        version: 3.5.13
+      esbuild:
+        specifier: ^0.25.2
+        version: 0.25.2
 
 packages:
 
