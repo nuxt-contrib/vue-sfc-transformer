@@ -52,7 +52,7 @@ console.log(transpiledTemplate)
 // <template>
 //   <div v-if="test" />
 // </template>
-// 
+//
 // <script setup lang="ts">
 // defineProps<{
 //   test?: string
