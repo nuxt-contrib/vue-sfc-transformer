@@ -219,7 +219,7 @@ function getSurrounding(code: string, start: number, end: number) {
 async function transformJsSnippet(code: string, transform: (code: string) => Promise<string>): Promise<string> {
   // `{ key: val } as any` in `<div :style="{ key: val } as any" />` is a valid js snippet,
   // but it can't be transformed.
-  // We can warp it with `()` to make it a valid js file
+  // We can wrap it with `()` to make it a valid js file
 
   let res = await transform(`(${code})`)
 
