@@ -73,10 +73,7 @@ export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string): P
   }
 }
 
-function processDefineProps(
-  node: Expression,
-  context: Context,
-): string | undefined {
+function processDefineProps(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, DEFINE_PROPS)) {
     return
   }
@@ -114,10 +111,7 @@ function processDefineProps(
 
   return generate(node).code
 }
-function processDefineEmits(
-  node: Expression,
-  context: Context,
-): string | undefined {
+function processDefineEmits(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, DEFINE_EMITS)) {
     return
   }
@@ -154,10 +148,7 @@ function processDefineEmits(
 
   return generate(node).code
 }
-function processWithDefaults(
-  node: Expression,
-  context: Context,
-): string | undefined {
+function processWithDefaults(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, WITH_DEFAULTS)) {
     return
   }
@@ -187,10 +178,7 @@ function processWithDefaults(
 
   return res
 }
-function processDefineModel(
-  node: Expression,
-  context: Context,
-): string | undefined {
+function processDefineModel(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, DEFINE_MODEL)) {
     return
   }
@@ -249,10 +237,7 @@ function processDefineModel(
   return generate(node).code
 }
 
-function getDefineModelRuntimeDecl(
-  node: CallExpression,
-  context: Context,
-): [StringLiteral | undefined, ObjectExpression | undefined] {
+function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [StringLiteral | undefined, ObjectExpression | undefined] {
   const [arg0, arg1] = node.arguments
   if (arg0 && arg0.type === 'StringLiteral') {
     if (arg1 && arg1.type !== 'ObjectExpression') {
@@ -272,10 +257,7 @@ function getDefineModelRuntimeDecl(
   return [undefined, arg0 as ObjectExpression | undefined]
 }
 
-async function prepareContext(
-  { script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock },
-  id: string,
-): Promise<Context> {
+async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string): Promise<Context> {
   const { extractRuntimeProps, extractRuntimeEmits, inferRuntimeType, MagicString } = await import('vue/compiler-sfc')
 
   const helper = new Set<string>()
