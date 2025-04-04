@@ -133,38 +133,27 @@ export async function transpileVueTemplate(content: string, root: RootNode, offs
   const s = new MagicString(content)
 
   handleNode(root, (...items) => expressions.push(...items))
-  await Promise.all(
-    expressions.map(async (item) => {
-      if (item.src.trim() === '') {
-        item.replacement = item.src
-        return
-      }
+  const transformMap = await transformJsSnippets(expressions.map(e => e.src), transform)
+  for (const item of expressions) {
+    item.replacement = transformMap.get(item.src) ?? item.src
 
-      try {
-        item.replacement = await transformJsSnippet(item.src, transform)
-
-        const surrounding = getSurrounding(
-          content,
-          item.loc.start.offset - offset,
-          item.loc.end.offset - offset,
-        )
-        if (surrounding) {
-          const replace = surrounding.code === `"` ? `'` : `"`
-          item.replacement = replaceQuote(
-            item.replacement,
-            surrounding.code,
-            replace,
-          )
-        }
-      }
-      catch {
-        item.replacement = item.src
-      }
-    }),
-  )
+    const surrounding = getSurrounding(
+      content,
+      item.loc.start.offset - offset,
+      item.loc.end.offset - offset,
+    )
+    if (surrounding) {
+      const replace = surrounding.code === `"` ? `'` : `"`
+      item.replacement = replaceQuote(
+        item.replacement,
+        surrounding.code,
+        replace,
+      )
+    }
+  }
 
   for (const item of expressions) {
-    if (item.replacement) {
+    if (item.replacement && item.replacement !== item.src) {
       s.overwrite(
         item.loc.start.offset - offset,
         item.loc.end.offset - offset,
@@ -216,27 +205,37 @@ function getSurrounding(code: string, start: number, end: number) {
     : undefined
 }
 
-async function transformJsSnippet(code: string, transform: (code: string) => Promise<string>): Promise<string> {
-  // `{ key: val } as any` in `<div :style="{ key: val } as any" />` is a valid js snippet,
-  // but it can't be transformed.
-  // We can wrap it with `()` to make it a valid js file
+async function transformJsSnippets(codes: string[], transform: (code: string) => Promise<string>): Promise<Map<string, string>> {
+  const keyMap = new Map<string, string>()
+  const resMap = new Map<string, string>()
 
-  let res = await transform(`(${code})`)
-
-  res = res.trim()
-
-  // result will be wrapped in `{content};\n`, we need to remove it
-  if (res.endsWith(';')) {
-    res = res.slice(0, -1)
+  for (const code of codes) {
+    keyMap.set(`wrapper_${keyMap.size}`, code)
   }
 
-  // Check if the code was a v-slot destructuring expression like "{ active, ...slotProps }"
-  // These should not be wrapped in parentheses as Vue template syntax doesn't support it
-  const isObject = /^\s*\{.*\}\s*$/.test(code)
-  if (isObject) {
-    // Remove the parentheses
-    res = res.match(/^\((.*)\)$/)?.[1] ?? res
-  }
+  // transform all snippets in a single file
+  const batchInput = Array.from(keyMap.entries()).map(([wrapperName, raw]) => `${wrapperName}(${raw});`).join('\n')
 
-  return res
+  try {
+    const batchOutput = await transform(batchInput)
+
+    const lines = batchOutput.split('\n')
+    const wrapperRegex = /^(wrapper_\d+)\((.*)\);$/
+    for (const line of lines) {
+      const [_, wrapperName, res] = line.match(wrapperRegex) ?? []
+      if (!wrapperName || !res) {
+        continue
+      }
+
+      const raw = keyMap.get(wrapperName)
+      if (raw) {
+        resMap.set(raw, res)
+      }
+    }
+
+    return resMap
+  }
+  catch (error) {
+    throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
+  }
 }

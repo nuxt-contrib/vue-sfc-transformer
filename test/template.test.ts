@@ -111,10 +111,8 @@ describe('transform typescript template', () => {
     expect(await fixture(`<div @click="" />`)).toEqual(`<div @click="" />`)
   })
 
-  it('keep error', async () => {
-    expect(await fixture(`<div>{{ data. }}</div>`)).toEqual(
-      `<div>{{ data. }}</div>`,
-    )
+  it('throw error', async () => {
+    await expect(fixture(`<div>{{ data. }}</div>`)).rejects.toThrowError()
   })
 
   it('quotes', async () => {
