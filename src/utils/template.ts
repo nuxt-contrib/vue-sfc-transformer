@@ -220,9 +220,9 @@ async function transformJsSnippets(codes: string[], transform: (code: string) =>
     const batchOutput = await transform(batchInput)
 
     const lines = batchOutput.split('\n')
-    const warperRegex = /^(wrapper_\d+)\((.*)\);$/
+    const wrapperRegex = /^(wrapper_\d+)\((.*)\);$/
     for (const line of lines) {
-      const [_, wrapperName, res] = line.match(warperRegex) ?? []
+      const [_, wrapperName, res] = line.match(wrapperRegex) ?? []
       if (!wrapperName || !res) {
         continue
       }
