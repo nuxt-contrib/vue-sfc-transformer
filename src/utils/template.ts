@@ -221,17 +221,21 @@ async function transformJsSnippet(code: string, transform: (code: string) => Pro
   // but it can't be transformed.
   // We can warp it with `()` to make it a valid js file
 
-  // Check if the code is a v-slot destructuring expression like "{ active, ...slotProps }"
-  // These should not be wrapped in parentheses as Vue template syntax doesn't support it
-  const isObject = /^\s*\{.*\}\s*$/.test(code)
-
-  let res = isObject ? await transform(code) : await transform(`(${code})`)
+  let res = await transform(`(${code})`)
 
   res = res.trim()
 
   // result will be wrapped in `{content};\n`, we need to remove it
   if (res.endsWith(';')) {
     res = res.slice(0, -1)
+  }
+
+  // Check if the code was a v-slot destructuring expression like "{ active, ...slotProps }"
+  // These should not be wrapped in parentheses as Vue template syntax doesn't support it
+  const isObject = /^\s*\{.*\}\s*$/.test(code)
+  if (isObject) {
+    // Remove the parentheses
+    res = res.match(/^\((.*)\)$/)?.[1] ?? res
   }
 
   return res

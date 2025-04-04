@@ -48,6 +48,12 @@ describe('transform typescript template', () => {
     expect(
       await fixture(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`),
     ).toEqual(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`)
+
+    expect(
+      await fixture(
+        `<MyComponent v-slot="{ remaining, duration } as { remaining: number, duration: number }">{{ remaining }}</MyComponent>`,
+      ),
+    ).toMatchInlineSnapshot(`"<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>"`)
   })
 
   it('custom directives', async () => {
