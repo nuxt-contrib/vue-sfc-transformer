@@ -228,8 +228,14 @@ async function transformJsSnippet(
   // `{ key: val } as any` in `<div :style="{ key: val } as any" />` is a valid js snippet,
   // but it can't be transformed.
   // We can warp it with `()` to make it a valid js file
+  // but if the code is a destructuring assignment, we don't need to wrap it.
+  // e.g. `v-slot"{ default }"` is a destructuring assignment, we don't need to wrap it.
 
-  let res = await transform(`(${code})`)
+  const isLikelyDestructuring = code.trim().startsWith('{') && code.trim().endsWith('}')
+
+  let res = isLikelyDestructuring
+    ? await transform(code)
+    : await transform(`(${code})`)
 
   res = res.trim()
 

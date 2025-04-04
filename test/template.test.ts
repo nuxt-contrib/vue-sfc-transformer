@@ -105,6 +105,12 @@ describe('transform typescript template', () => {
     )
   })
 
+  it('keep destructuring', async () => {
+    expect(
+      await fixture(`<Item v-slot="{ default }" />`),
+    ).toEqual(`<Item v-slot="{ default }" />`)
+  })
+
   it('quotes', async () => {
     expect(await fixture(`<div @click="emit('click')" />`)).toEqual(
       `<div @click="emit('click')" />`,
