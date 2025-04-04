@@ -18,8 +18,8 @@
       ".": [
         "./dist/index.d.mts"
       ],
-      "./*": [
-        "./dist/*"
+      "mkdist": [
+        "./dist/mkdist.d.mts"
       ]
     }
   },
