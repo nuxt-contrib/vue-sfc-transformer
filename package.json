@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.0",
   "packageManager": "pnpm@10.7.0",
-  "description": "",
+  "description": "Tools for minimal TypeScript transpilation of Vue SFCs",
   "license": "MIT",
   "repository": "nuxt-contrib/vue-sfc-transformer",
   "sideEffects": false,

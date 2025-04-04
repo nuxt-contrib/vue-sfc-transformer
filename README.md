@@ -5,7 +5,7 @@
 [![Github Actions][github-actions-src]][github-actions-href]
 [![Codecov][codecov-src]][codecov-href]
 
-> Package description
+> Tools for minimal TypeScript transpilation of Vue SFCs
 
 ## Usage
 
