@@ -208,8 +208,14 @@ function getSurrounding(code: string, start: number, end: number) {
 async function transformJsSnippets(codes: string[], transform: (code: string) => Promise<string>): Promise<Map<string, string>> {
   const keyMap = new Map<string, string>()
   const resMap = new Map<string, string>()
+  const codeSet = new Set<string>()
 
   for (const code of codes) {
+    if (codeSet.has(code)) {
+      continue
+    }
+
+    codeSet.add(code)
     keyMap.set(`wrapper_${keyMap.size}`, code)
   }
 
