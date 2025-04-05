@@ -42,6 +42,16 @@ describe('transform typescript template', () => {
         `<div @click="(e: unknown) => handleClick(e as MouseEvent)" />`,
       ),
     ).toEqual(`<div @click="(e) => handleClick(e)" />`)
+    expect(
+      await fixture(
+        `<div @click="(e: unknown) => { handleClick(e as MouseEvent); ping() }" />`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<div @click="(e) => {
+        handleClick(e);
+        ping();
+      }" />"
+    `)
   })
 
   it('destructuring', async () => {

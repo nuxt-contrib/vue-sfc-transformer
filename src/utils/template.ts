@@ -214,13 +214,14 @@ async function transformJsSnippets(codes: string[], transform: (code: string) =>
   }
 
   // transform all snippets in a single file
-  const batchInput = Array.from(keyMap.entries()).map(([wrapperName, raw]) => `${wrapperName}(${raw});`).join('\n')
+  const batchInputSplitter = `\nsplitter(${Math.random()});\n`
+  const batchInput = Array.from(keyMap.entries()).map(([wrapperName, raw]) => `${wrapperName}(${raw});`).join(batchInputSplitter)
 
   try {
     const batchOutput = await transform(batchInput)
 
-    const lines = batchOutput.split('\n')
-    const wrapperRegex = /^(wrapper_\d+)\((.*)\);$/
+    const lines = batchOutput.trim().split(batchInputSplitter)
+    const wrapperRegex = /^(wrapper_\d+)\(([\s\S]*?)\);$/
     for (const line of lines) {
       const [_, wrapperName, res] = line.match(wrapperRegex) ?? []
       if (!wrapperName || !res) {
