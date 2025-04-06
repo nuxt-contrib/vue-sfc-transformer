@@ -219,7 +219,7 @@ function processDefineModel(node: Expression, context: Context): string | undefi
 
   const codegenType = model.length === 1 ? model[0] : `[${model.join(',')}]`
   const codegenExtra = modelRuntimeDecl ? `...${context.ctx.getString(modelRuntimeDecl)}` : ''
-  codegenArgs.push(`{ ${[`type: ${codegenType}`, codegenExtra].filter(s => !!s).join(',')} }`)
+  codegenArgs.push(`{ ${[`type: ${codegenType}`, codegenExtra].filter(s => !!s).join(', ')} }`)
 
   return `${DEFINE_MODEL}(${codegenArgs.join(', ')})`
 }

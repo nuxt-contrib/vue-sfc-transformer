@@ -180,7 +180,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel({ type: String,...{ required: true } })
+      defineModel({ type: String, ...{ required: true } })
       </script>"
     `)
     expect(
@@ -189,7 +189,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", { type: String,...{ required: true } })
+      defineModel("msg", { type: String, ...{ required: true } })
       </script>"
     `)
   })
