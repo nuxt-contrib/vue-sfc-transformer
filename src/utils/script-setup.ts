@@ -1,7 +1,6 @@
-import type { ArrayExpression, CallExpression, Expression, ExpressionStatement, Identifier, Node, ObjectExpression, ObjectProperty, StringLiteral } from '@babel/types'
+import type { ArrayExpression, CallExpression, Expression, Identifier, Node, ObjectExpression, ObjectProperty, StringLiteral } from '@babel/types'
 import type { SFCDescriptor, SFCScriptBlock, SimpleTypeResolveContext } from 'vue/compiler-sfc'
 
-import { generate } from '@babel/generator'
 import { parse } from '@babel/parser'
 
 interface Context {
@@ -97,19 +96,8 @@ function processDefineProps(node: Expression, context: Context): string | undefi
 
   context.ctx.propsTypeDecl = propsTypeDecl
   const propsStr = context.utils.extractRuntimeProps(context.ctx)
-  const propsAst = parse(`${DEFINE_PROPS}(${propsStr})`, {
-    sourceType: 'module',
-    plugins: ['typescript'],
-  })
 
-  node.typeArguments = undefined
-  node.typeParameters = undefined
-  node.arguments = (
-    (propsAst.program.body[0] as ExpressionStatement)
-      .expression as CallExpression
-  ).arguments
-
-  return generate(node).code
+  return `${DEFINE_PROPS}(${propsStr})`
 }
 function processDefineEmits(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, DEFINE_EMITS)) {
@@ -136,17 +124,7 @@ function processDefineEmits(node: Expression, context: Context): string | undefi
   context.ctx.emitsTypeDecl = emitsTypeDecl
   const emits = context.utils.extractRuntimeEmits(context.ctx)
 
-  node.typeArguments = undefined
-  node.typeParameters = undefined
-  node.arguments[0] = {
-    type: 'ArrayExpression',
-    elements: [...emits].map(emit => ({
-      type: 'StringLiteral',
-      value: emit,
-    })),
-  }
-
-  return generate(node).code
+  return `defineEmits([${[...emits].map(emit => `"${emit}"`).join(', ')}])`
 }
 function processWithDefaults(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, WITH_DEFAULTS)) {
@@ -234,7 +212,16 @@ function processDefineModel(node: Expression, context: Context): string | undefi
     ? [modelNameDecl, modelCodegenDecl]
     : [modelCodegenDecl]
 
-  return generate(node).code
+  const codegenArgs: string[] = []
+  if (modelNameDecl) {
+    codegenArgs.push(`"${modelNameDecl.value}"`)
+  }
+
+  const codegenType = model.length === 1 ? model[0] : `[${model.join(',')}]`
+  const codegenExtra = modelRuntimeDecl ? `...${context.ctx.getString(modelRuntimeDecl)}` : ''
+  codegenArgs.push(`{ ${[`type: ${codegenType}`, codegenExtra].filter(s => !!s).join(',')} }`)
+
+  return `${DEFINE_MODEL}(${codegenArgs.join(', ')})`
 }
 
 function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [StringLiteral | undefined, ObjectExpression | undefined] {
