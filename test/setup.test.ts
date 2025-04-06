@@ -48,6 +48,19 @@ describe('transform typescript script setup', () => {
         })
       </script>"
     `)
+    expect(
+      await fixture([
+        `<script lang="ts">interface PropsData { msg?: string, count: number }</script>`,
+        `<script setup lang="ts">const { msg = 'hello' } = defineProps<PropsData>()</script>`,
+      ].join('\n')),
+    ).toMatchInlineSnapshot(`
+      "<script setup>
+      const { msg = 'hello' } = defineProps({
+          msg: { type: String, required: false },
+          count: { type: Number, required: true }
+        })
+      </script>"
+    `)
   })
 
   it('strips generic from script setup blocks', async () => {
