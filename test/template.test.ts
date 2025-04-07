@@ -54,6 +54,11 @@ describe('transform typescript template', () => {
     `)
   })
 
+  it('v-slot', async () => {
+    expect(await fixture(`<Comp><template #header="{ name = 'hi' }">{{ name!.toString() }}</template></Comp>`))
+      .toMatchInlineSnapshot(`"<Comp><template #header="{ name = 'hi' }">{{ name.toString() }}</template></Comp>"`)
+  })
+
   it('destructuring', async () => {
     expect(
       await fixture(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`),
@@ -61,7 +66,7 @@ describe('transform typescript template', () => {
 
     expect(
       await fixture(
-        `<MyComponent v-slot="{ remaining, duration } as { remaining: number, duration: number }">{{ remaining }}</MyComponent>`,
+        `<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>`,
       ),
     ).toMatchInlineSnapshot(`"<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>"`)
   })
