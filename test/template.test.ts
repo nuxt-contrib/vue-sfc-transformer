@@ -142,6 +142,12 @@ describe('transform typescript template', () => {
     )
   })
 
+  it('equals', async () => {
+    expect(
+      await fixture(`<MyComponent #template="{ item, index, level = 0 as 0 | 1 }" />`),
+    ).toMatchInlineSnapshot(`"<MyComponent #template="{ item, index, level = 0 as 0 | 1 }" />"`)
+  })
+
   async function fixture(src: string) {
     const requireFromVue = createRequire(resolveModulePath('vue'))
     const { parse } = requireFromVue('@vue/compiler-dom') as typeof import('@vue/compiler-dom')
