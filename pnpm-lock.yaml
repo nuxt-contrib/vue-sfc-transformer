@@ -14,9 +14,6 @@ importers:
       '@babel/parser':
         specifier: ^7.27.0
         version: 7.27.0
-      esbuild:
-        specifier: 0.25.2
-        version: 0.25.2
     devDependencies:
       '@antfu/eslint-config':
         specifier: 4.11.0
@@ -39,6 +36,9 @@ importers:
       changelogithub:
         specifier: 13.13.0
         version: 13.13.0(magicast@0.3.5)
+      esbuild:
+        specifier: 0.25.2
+        version: 0.25.2
       eslint:
         specifier: 9.24.0
         version: 9.24.0(jiti@2.4.2)
