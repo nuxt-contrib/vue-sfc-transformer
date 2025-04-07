@@ -1,5 +1,6 @@
 import type { SFCBlock, SFCTemplateBlock } from 'vue/compiler-sfc'
 import type { InputFile, Loader, LoaderContext, LoaderResult, OutputFile } from './types/mkdist'
+import { transform } from 'esbuild'
 import { preTranspileScriptSetup, transpileVueTemplate } from './index'
 
 interface DefineVueLoaderOptions {
@@ -222,7 +223,6 @@ const scriptLoader: VueBlockLoader = async (block, { options }) => {
     return
   }
 
-  const { transform } = await esbuild()
   const { code: result } = await transform(block.content, {
     ...options.esbuild,
     loader: 'ts',
@@ -243,14 +243,6 @@ export const vueLoader = defineVueLoader({
     style: styleLoader,
   },
 })
-
-let esbuildCache: typeof import('esbuild')
-async function esbuild() {
-  if (!esbuildCache) {
-    esbuildCache = await import('esbuild')
-  }
-  return esbuildCache
-}
 
 function cleanupBreakLine(str: string): string {
   return str.replaceAll(/(\n\n)\n+/g, '\n\n').replace(/^\s*\n|\n\s*$/g, '')
