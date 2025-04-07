@@ -145,7 +145,7 @@ describe('transform typescript template', () => {
   it('equals', async () => {
     expect(
       await fixture(`<MyComponent #template="{ item, index, level = 0 as 0 | 1 }" />`),
-    ).toMatchInlineSnapshot(`"<MyComponent #template="{ item, index, level = 0 as 0 | 1 }" />"`)
+    ).toMatchInlineSnapshot(`"<MyComponent #template="{ item, index, level = 0 }" />"`)
   })
 
   async function fixture(src: string) {
