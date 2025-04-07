@@ -37,27 +37,40 @@ enum NodeTypes {
   JS_RETURN_STATEMENT,
 }
 
+interface ExpressionTrack {
+  type: NodeTypes
+  name?: string
+}
+
 interface Expression {
+  track: ExpressionTrack[]
   loc: SourceLocation
   src: string
   replacement?: string
 }
 
+type VueTemplateNode =
+  | ParentNode
+  | ExpressionNode
+  | TemplateChildNode
+  | AttributeNode
+  | DirectiveNode
+
 function handleNode(
-  node:
-    | ParentNode
-    | ExpressionNode
-    | TemplateChildNode
-    | AttributeNode
-    | DirectiveNode
-    | undefined,
+  node: VueTemplateNode | undefined,
   addExpression: (...expressions: Expression[]) => void,
+  track: ExpressionTrack[],
 ) {
   if (!node) {
     return
   }
 
-  const search = (node?: ExpressionNode | TemplateChildNode | AttributeNode | DirectiveNode | TextNode) => handleNode(node, addExpression)
+  const currentTrack = [...track, node]
+
+  const search = (
+    node?: ExpressionNode | TemplateChildNode | AttributeNode
+      | DirectiveNode | TextNode,
+  ) => handleNode(node, addExpression, currentTrack)
 
   switch (node.type) {
     case NodeTypes.ROOT: {
@@ -83,7 +96,7 @@ function handleNode(
       if (node.ast === null || node.ast === false) {
         return
       }
-      addExpression({ loc: node.loc, src: node.content })
+      addExpression({ loc: node.loc, src: node.content, track: currentTrack })
       return
     }
     case NodeTypes.INTERPOLATION: {
@@ -114,7 +127,7 @@ function handleNode(
         return
       }
 
-      addExpression({ loc: node.loc, src: node.loc.source })
+      addExpression({ loc: node.loc, src: node.loc.source, track: currentTrack })
       return
     }
     // case NodeTypes.IF:
@@ -126,11 +139,16 @@ function handleNode(
   }
 }
 
-export async function transpileVueTemplate(content: string, root: RootNode, offset = 0, transform: (code: string) => Promise<string>): Promise<string> {
+export async function transpileVueTemplate(
+  content: string,
+  root: RootNode,
+  offset = 0,
+  transform: (code: string) => Promise<string>,
+): Promise<string> {
   const { MagicString } = await import('vue/compiler-sfc')
   const expressions: Expression[] = []
 
-  handleNode(root, (...items) => expressions.push(...items))
+  handleNode(root, (...items) => expressions.push(...items), [])
 
   if (expressions.length === 0) {
     return content
@@ -138,9 +156,9 @@ export async function transpileVueTemplate(content: string, root: RootNode, offs
 
   const s = new MagicString(content)
 
-  const transformMap = await transformJsSnippets(expressions.map(e => e.src), transform)
+  const transformMap = await transformJsSnippets(expressions, transform)
   for (const item of expressions) {
-    item.replacement = transformMap.get(item.src) ?? item.src
+    item.replacement = transformMap.get(item) ?? item.src
 
     const surrounding = getSurrounding(
       content,
@@ -210,42 +228,99 @@ function getSurrounding(code: string, start: number, end: number) {
     : undefined
 }
 
-async function transformJsSnippets(codes: string[], transform: (code: string) => Promise<string>): Promise<Map<string, string>> {
-  const keyMap = new Map<string, string>()
-  const resMap = new Map<string, string>()
-  const codeSet = new Set<string>()
+interface SnippetHandler {
+  key: (node: Expression) => string | null
+  prepare: (node: Expression, id: number) => string
+  parse: (code: string, id: number) => string | undefined
+}
 
-  for (const code of codes) {
-    if (codeSet.has(code)) {
-      continue
+const defaultSnippetHandler: SnippetHandler = {
+  key: node => `default$:${node.src}`,
+  prepare: (node, id) => `wrapper_${id}(${node.src});`,
+  parse: (code) => {
+    const wrapperRegex = /^(wrapper_\d+)\(([\s\S]*?)\);$/
+
+    const [_, wrapperName, res] = code.match(wrapperRegex) ?? []
+    if (!wrapperName || !res) {
+      return undefined
     }
 
-    codeSet.add(code)
-    keyMap.set(`wrapper_${keyMap.size}`, code)
-  }
+    return res
+  },
+}
 
-  // transform all snippets in a single file
-  const batchInputSplitter = `\nsplitter(${Math.random()});\n`
-  const batchInput = Array.from(keyMap.entries()).map(([wrapperName, raw]) => `${wrapperName}(${raw});`).join(batchInputSplitter)
+const vSlotSnippetHandler: SnippetHandler = {
+  key: (node) => {
+    const secondLastTrack = node.track.at(-2)
+    if (secondLastTrack?.type === NodeTypes.DIRECTIVE && secondLastTrack.name === 'slot') {
+      return `vSlot$:${node.src}`
+    }
+    return null
+  },
+  prepare: (node, id) => `const ${node.src} = wrapper_${id}();`,
+  parse: (code) => {
+    const regex = /^(const\s+)(\w+)\s*=\s*wrapper_\d+\(\);$/
+    const [_, res] = code.match(regex) ?? []
+    if (!res) {
+      return undefined
+    }
+    return res
+  },
+}
 
-  try {
-    const batchOutput = await transform(batchInput)
-
-    const lines = batchOutput.trim().split(batchInputSplitter)
-    const wrapperRegex = /^(wrapper_\d+)\(([\s\S]*?)\);$/
-    for (const line of lines) {
-      const [_, wrapperName, res] = line.match(wrapperRegex) ?? []
-      if (!wrapperName || !res) {
+async function transformJsSnippets(codes: Expression[], transform: (code: string) => Promise<string>): Promise<WeakMap<Expression, string>> {
+  const keyMap = new WeakMap<Expression, string>()
+  const transformMap = new Map<string, { id: number, node: Expression, handler: SnippetHandler }>()
+  const snippetHandlers = [vSlotSnippetHandler, defaultSnippetHandler]
+  let id = 0
+  for (const code of codes) {
+    for (const handler of snippetHandlers) {
+      const key = handler.key(code)
+      if (!key) {
         continue
       }
 
-      const raw = keyMap.get(wrapperName)
-      if (raw) {
-        resMap.set(raw, res)
+      keyMap.set(code, key)
+      if (transformMap.has(key)) {
+        break
       }
+
+      transformMap.set(key, { id, node: code, handler })
+      id += 1
+      break
+    }
+  }
+
+  const batchOrder = Array.from(transformMap.entries())
+
+  // transform all snippets in a single file
+  const batchInputSplitter = `\nsplitter(${Math.random()});\n`
+  const batchInput = batchOrder
+    .map(([_, { node, handler }]) => handler.prepare(node, id))
+    .join(batchInputSplitter)
+
+  try {
+    const batchOutput = await transform(batchInput)
+    const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
+
+    if (lines.length !== batchOrder.length) {
+      throw new Error('[vue-sfc-transform] Syntax Error')
     }
 
-    return resMap
+    const resultMap = new Map<Expression, string>()
+    for (let i = 0; i < batchOrder.length; i++) {
+      const line = lines[i]!
+      const [_, { id, handler, node }] = batchOrder[i]!
+
+      const res = handler.parse(line, id)
+      if (!res) {
+        continue
+      }
+
+      resultMap.set(node, res)
+    }
+
+    return resultMap
   }
   catch (error) {
     throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
