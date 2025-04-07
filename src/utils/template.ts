@@ -130,9 +130,14 @@ export async function transpileVueTemplate(content: string, root: RootNode, offs
   const { MagicString } = await import('vue/compiler-sfc')
   const expressions: Expression[] = []
 
+  handleNode(root, (...items) => expressions.push(...items))
+
+  if (expressions.length === 0) {
+    return content
+  }
+
   const s = new MagicString(content)
 
-  handleNode(root, (...items) => expressions.push(...items))
   const transformMap = await transformJsSnippets(expressions.map(e => e.src), transform)
   for (const item of expressions) {
     item.replacement = transformMap.get(item.src) ?? item.src
