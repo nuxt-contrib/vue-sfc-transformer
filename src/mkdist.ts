@@ -40,7 +40,6 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
     const { parse } = await import('vue/compiler-sfc')
 
     let modified = false
-    let fakeScriptBlock = false
 
     const raw = await input.getContents()
     const sfc = parse(raw, {
@@ -81,28 +80,14 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
           : sfc.descriptor.scriptSetup,
       )
     }
-    if (!sfc.descriptor.script && !sfc.descriptor.scriptSetup) {
-      // push a fake script block to generate dts
-      blocks.unshift({
-        type: 'script',
-        content: 'default {}',
-        attrs: {},
-        loc: {
-          start: {
-            offset: 0,
-            line: 1,
-            column: 1,
-          },
-          end: {
-            offset: 0,
-            line: 1,
-            column: 1,
-          },
-          source: '',
-        },
-      })
-      fakeScriptBlock = true
-    }
+
+    // generate dts
+    await context.loadFile({
+      path: `${input.path}.js`,
+      srcPath: `${input.srcPath}.js`,
+      extension: '.js',
+      getContents: () => 'export default {}',
+    })
 
     const results = await Promise.all(
       blocks.map(async (data) => {
@@ -127,10 +112,6 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
     const contents = results
       .sort((a, b) => a.offset - b.offset)
       .map(({ block }) => {
-        if (block.type === 'script' && fakeScriptBlock) {
-          return undefined
-        }
-
         const attrs = Object.entries(block.attrs)
           .map(([key, value]) => {
             if (!value) {
@@ -236,11 +217,24 @@ const styleLoader = defineDefaultBlockLoader({
   type: 'style',
 })
 
-const scriptLoader = defineDefaultBlockLoader({
-  defaultLang: 'js',
-  type: 'script',
-  validExtensions: ['.js', '.mjs'],
-})
+const scriptLoader: VueBlockLoader = async (block, { options }) => {
+  if (block.type !== 'script') {
+    return
+  }
+
+  const { transform } = await esbuild()
+  const { code: result } = await transform(block.content, {
+    ...options.esbuild,
+    loader: 'ts',
+    tsconfigRaw: { compilerOptions: { target: 'ESNext', verbatimModuleSyntax: true } },
+  })
+
+  return {
+    type: block.type,
+    attrs: toOmit(block.attrs, ['lang', 'generic']),
+    content: result,
+  }
+}
 
 export const vueLoader = defineVueLoader({
   blockLoaders: {
@@ -249,6 +243,14 @@ export const vueLoader = defineVueLoader({
     style: styleLoader,
   },
 })
+
+let esbuildCache: typeof import('esbuild')
+async function esbuild() {
+  if (!esbuildCache) {
+    esbuildCache = await import('esbuild')
+  }
+  return esbuildCache
+}
 
 function cleanupBreakLine(str: string): string {
   return str.replaceAll(/(\n\n)\n+/g, '\n\n').replace(/^\s*\n|\n\s*$/g, '')
