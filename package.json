@@ -61,11 +61,11 @@
     "eslint": "9.24.0",
     "exsolve": "^1.0.4",
     "installed-check": "9.3.0",
-    "knip": "5.46.5",
+    "knip": "5.47.0",
     "lint-staged": "15.5.0",
     "mkdist": "^2.3.0",
     "simple-git-hooks": "2.12.1",
-    "typescript": "5.8.2",
+    "typescript": "5.8.3",
     "unbuild": "3.5.0",
     "vitest": "3.1.1",
     "vue": "3.5.13"
