@@ -259,12 +259,12 @@ const vSlotSnippetHandler: SnippetHandler = {
   },
   prepare: (node, id) => `const ${node.src} = wrapper_${id}();`,
   parse: (code) => {
-    const regex = /^(const\s+)(\w+)\s*=\s*wrapper_\d+\(\);$/
+    const regex = /^const([\s\S]*?)=\s+wrapper_\d+\(\);$/
     const [_, res] = code.match(regex) ?? []
     if (!res) {
       return undefined
     }
-    return res
+    return res.trim()
   },
 }
 
