@@ -27,7 +27,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=6.9.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "build": "unbuild",
@@ -44,6 +44,7 @@
     "test:types": "tsc --noEmit"
   },
   "peerDependencies": {
+    "esbuild": "*",
     "vue": "^3.5.13"
   },
   "dependencies": {

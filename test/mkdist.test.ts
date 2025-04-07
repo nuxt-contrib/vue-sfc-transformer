@@ -192,6 +192,30 @@ describe('transform typescript script setup', () => {
     `)
   })
 
+  it('do not tree-shake', async () => {
+    expect(
+      await fixture(
+        `<template>
+          <div :data-test="toValue('hello')" />
+        </template>
+        <script setup lang="ts">
+        import { toValue, type Ref } from 'vue'
+        const msg = 1
+        </script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<template>
+                <div :data-test="toValue('hello')" />
+      </template>
+
+      <script setup>
+      import { toValue } from "vue";
+      const msg = 1;
+      </script>
+      "
+    `)
+  })
+
   async function fixture(src: string): Promise<string> {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
