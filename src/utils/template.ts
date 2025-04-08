@@ -109,12 +109,15 @@ function handleNode(
     }
     case NodeTypes.DIRECTIVE: {
       const nodes = [
-        node.exp,
+        ...node.forParseResult
+          ? [
+              node.forParseResult?.source,
+              node.forParseResult?.value,
+              node.forParseResult?.key,
+              node.forParseResult?.index,
+            ]
+          : [node.exp],
         // node.arg,
-        // node.forParseResult?.source,
-        // node.forParseResult?.value,
-        // node.forParseResult?.key,
-        // node.forParseResult?.index,
         ...node.modifiers,
       ].filter(item => !!item)
       for (const child of nodes) {
