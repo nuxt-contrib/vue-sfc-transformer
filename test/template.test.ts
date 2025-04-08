@@ -6,10 +6,10 @@ import { transpileVueTemplate } from '../src/utils/template'
 
 describe('transform typescript template', () => {
   it('v-for', async () => {
-    expect(await fixture(`<div v-for="item as string in items as unknown[]" :key="item">{{ item }}</div>`))
+    expect(await fixture(`<div v-for="item in items as unknown[]" :key="item">{{ item }}</div>`))
       .toEqual(`<div v-for="item in items" :key="item">{{ item }}</div>`)
 
-    expect(await fixture(`<div v-for="(item as string, index) in items as unknown[]" :key="item" :index>{{ item }}</div>`))
+    expect(await fixture(`<div v-for="(item, index) in items as unknown[]" :key="item" :index>{{ item }}</div>`))
       .toEqual(`<div v-for="(item, index) in items" :key="item" :index>{{ item }}</div>`)
 
     expect(await fixture(`<div v-for="(item, index) of items" />`))
