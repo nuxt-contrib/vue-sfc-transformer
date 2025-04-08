@@ -65,6 +65,7 @@
     "knip": "5.47.0",
     "lint-staged": "15.5.0",
     "mkdist": "2.3.0",
+    "pkg-pr-new": "^0.0.42",
     "simple-git-hooks": "2.12.1",
     "typescript": "5.8.3",
     "unbuild": "3.5.0",
