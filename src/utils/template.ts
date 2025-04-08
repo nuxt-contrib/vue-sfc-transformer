@@ -268,61 +268,72 @@ const vSlotSnippetHandler: SnippetHandler = {
   },
 }
 
-async function transformJsSnippets(codes: Expression[], transform: (code: string) => Promise<string>): Promise<WeakMap<Expression, string>> {
-  const keyMap = new WeakMap<Expression, string>()
-  const transformMap = new Map<string, { id: number, node: Expression, handler: SnippetHandler }>()
-  const snippetHandlers = [vSlotSnippetHandler, defaultSnippetHandler]
+const snippetHandlers = [vSlotSnippetHandler, defaultSnippetHandler]
+function getKey(expression: Expression) {
+  for (const handler of snippetHandlers) {
+    const key = handler.key(expression)
+    if (key) {
+      return { key, handler }
+    }
+  }
+}
+
+async function transformJsSnippets(expressions: Expression[], transform: (code: string) => Promise<string>): Promise<WeakMap<Expression, string>> {
+  const transformMap = new Map<string, { id: number, nodes: [Expression, ...Expression[]], handler: SnippetHandler }>()
+
   let id = 0
-  for (const code of codes) {
-    for (const handler of snippetHandlers) {
-      const key = handler.key(code)
-      if (!key) {
-        continue
+  for (const expression of expressions) {
+    const res = getKey(expression)
+    if (!res) {
+      continue
+    }
+    if (transformMap.has(res.key)) {
+      const item = transformMap.get(res.key)!
+      item.nodes.push(expression)
+      continue
+    }
+
+    transformMap.set(res.key, { id, nodes: [expression], handler: res.handler })
+    id += 1
+  }
+
+  const resultMap = new Map<Expression, string>()
+  for (const item of transformMap.values()) {
+    // TODO: reenable batch processing after fixing issue with esbuild renaming variables
+    const batch = [item]
+
+    // transform all snippets in a single file
+    const batchInputSplitter = `\nsplitter(${Math.random()});\n`
+    const batchInput = batch
+      .map(({ nodes, handler }) => handler.prepare(nodes[0], id))
+      .join(batchInputSplitter)
+
+    try {
+      const batchOutput = await transform(batchInput)
+      const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
+
+      if (lines.length !== batch.length) {
+        throw new Error('[vue-sfc-transform] Syntax Error')
       }
 
-      keyMap.set(code, key)
-      if (transformMap.has(key)) {
-        break
-      }
+      for (let i = 0; i < batch.length; i++) {
+        const line = lines[i]!
+        const { id, handler, nodes } = batch[i]!
 
-      transformMap.set(key, { id, node: code, handler })
-      id += 1
-      break
+        const res = handler.parse(line, id)
+        if (!res) {
+          continue
+        }
+
+        for (const node of nodes) {
+          resultMap.set(node, res)
+        }
+      }
+    }
+    catch (error) {
+      throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
     }
   }
 
-  const batchOrder = Array.from(transformMap.entries())
-
-  // transform all snippets in a single file
-  const batchInputSplitter = `\nsplitter(${Math.random()});\n`
-  const batchInput = batchOrder
-    .map(([_, { node, handler }]) => handler.prepare(node, id))
-    .join(batchInputSplitter)
-
-  try {
-    const batchOutput = await transform(batchInput)
-    const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
-
-    if (lines.length !== batchOrder.length) {
-      throw new Error('[vue-sfc-transform] Syntax Error')
-    }
-
-    const resultMap = new Map<Expression, string>()
-    for (let i = 0; i < batchOrder.length; i++) {
-      const line = lines[i]!
-      const [_, { id, handler, node }] = batchOrder[i]!
-
-      const res = handler.parse(line, id)
-      if (!res) {
-        continue
-      }
-
-      resultMap.set(node, res)
-    }
-
-    return resultMap
-  }
-  catch (error) {
-    throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
-  }
+  return resultMap
 }
