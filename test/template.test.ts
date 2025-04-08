@@ -14,6 +14,9 @@ describe('transform typescript template', () => {
 
     expect(await fixture(`<div v-for="(item, index) of items" />`))
       .toEqual(`<div v-for="(item, index) of items" />`)
+
+    expect(await fixture(`<div v-for="({ name = 'Tony' }, index) of items" />`))
+      .toEqual(`<div v-for="({ name = 'Tony' }, index) of items" />`)
   })
 
   it('v-if', async () => {
