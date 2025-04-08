@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { vueLoader } from '../src/mkdist'
 
 describe('transform typescript script setup', () => {
-  const tmpDir = fileURLToPath(new URL('./.tmp/fixtures', import.meta.url))
+  const tmpDir = fileURLToPath(new URL('../node_modules/.tmp/fixtures', import.meta.url))
   afterAll(async () => {
     await rm(tmpDir, { force: true, recursive: true })
   })
