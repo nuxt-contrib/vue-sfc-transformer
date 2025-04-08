@@ -1,5 +1,6 @@
 import type { SFCBlock, SFCTemplateBlock } from 'vue/compiler-sfc'
 import type { InputFile, Loader, LoaderContext, LoaderResult, OutputFile } from './types/mkdist'
+import process from 'node:process'
 import { transform } from 'esbuild'
 import { preTranspileScriptSetup, transpileVueTemplate } from './index'
 
@@ -132,6 +133,23 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
       })
       .filter(item => !!item)
       .join('\n')
+
+    // @ts-expect-error internal flag for testing
+    if (context.options._verify || process.env.VERIFY_VUE_FILES) {
+      // verify the output
+      const { parse } = await import('vue/compiler-sfc')
+      const { errors } = parse(contents, {
+        filename: input.srcPath,
+        ignoreEmpty: true,
+      })
+      if (errors.length > 0) {
+        for (const error of errors) {
+          console.error(error)
+        }
+        return
+      }
+    }
+
     addOutput({
       path: input.path,
       srcPath: input.srcPath,
