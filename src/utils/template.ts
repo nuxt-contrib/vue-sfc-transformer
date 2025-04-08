@@ -232,6 +232,7 @@ interface SnippetHandler {
   key: (node: Expression) => string | null
   prepare: (node: Expression, id: number) => string
   parse: (code: string, id: number) => string | undefined
+  standalone: boolean
 }
 
 const defaultSnippetHandler: SnippetHandler = {
@@ -247,6 +248,7 @@ const defaultSnippetHandler: SnippetHandler = {
 
     return res
   },
+  standalone: false,
 }
 
 const vSlotSnippetHandler: SnippetHandler = {
@@ -266,6 +268,7 @@ const vSlotSnippetHandler: SnippetHandler = {
     }
     return res.trim()
   },
+  standalone: true,
 }
 
 const snippetHandlers = [vSlotSnippetHandler, defaultSnippetHandler]
@@ -298,41 +301,55 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
   }
 
   const resultMap = new Map<Expression, string>()
-  for (const item of transformMap.values()) {
-    // TODO: reenable batch processing after fixing issue with esbuild renaming variables
-    const batch = [item]
 
+  const orders = Array.from(transformMap.values())
+  const batch = orders.filter(({ handler }) => !handler.standalone)
+  const standalone = orders.filter(({ handler }) => handler.standalone)
+
+  try {
     // transform all snippets in a single file
     const batchInputSplitter = `\nsplitter(${Math.random()});\n`
     const batchInput = batch
       .map(({ nodes, handler }) => handler.prepare(nodes[0], id))
       .join(batchInputSplitter)
 
-    try {
-      const batchOutput = await transform(batchInput)
-      const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
+    const batchOutput = await transform(batchInput)
+    const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
 
-      if (lines.length !== batch.length) {
-        throw new Error('[vue-sfc-transform] Syntax Error')
+    if (lines.length !== batch.length) {
+      throw new Error('[vue-sfc-transform] Syntax Error')
+    }
+
+    for (let i = 0; i < batch.length; i++) {
+      const line = lines[i]!
+      const { id, handler, nodes } = batch[i]!
+
+      const res = handler.parse(line, id)
+      if (!res) {
+        continue
       }
 
-      for (let i = 0; i < batch.length; i++) {
-        const line = lines[i]!
-        const { id, handler, nodes } = batch[i]!
-
-        const res = handler.parse(line, id)
-        if (!res) {
-          continue
-        }
-
-        for (const node of nodes) {
-          resultMap.set(node, res)
-        }
+      for (const node of nodes) {
+        resultMap.set(node, res)
       }
     }
-    catch (error) {
-      throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
-    }
+
+    // transform standalone snippets
+    await Promise.all(standalone.map(async ({ id, handler, nodes }) => {
+      const line = await transform(handler.prepare(nodes[0], id))
+
+      const res = handler.parse(line.trim(), id)
+      if (!res) {
+        return
+      }
+
+      for (const node of nodes) {
+        resultMap.set(node, res)
+      }
+    }))
+  }
+  catch (error) {
+    throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
   }
 
   return resultMap
