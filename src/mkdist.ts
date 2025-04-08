@@ -84,9 +84,9 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
 
     // generate dts
     await context.loadFile({
-      path: `${input.path}.js`,
-      srcPath: `${input.srcPath}.js`,
-      extension: '.js',
+      path: `${input.path}.ts`,
+      srcPath: `${input.srcPath}.ts`,
+      extension: '.ts',
       getContents: () => 'export default {}',
     })
 
