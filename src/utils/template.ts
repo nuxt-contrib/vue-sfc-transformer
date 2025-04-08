@@ -164,17 +164,18 @@ export async function transpileVueTemplate(
   for (const item of expressions) {
     item.replacement = transformMap.get(item) ?? item.src
 
-    const surrounding = getSurrounding(
+    // the source should only have one of the quotes
+    const sourceQuote = getSourceQuote(
       content,
       item.loc.start.offset - offset,
       item.loc.end.offset - offset,
     )
-    if (surrounding) {
-      const replace = surrounding.code === `"` ? `'` : `"`
+    if (sourceQuote !== null) {
+      const search = sourceQuote === `"` ? `'` : `"`
       item.replacement = replaceQuote(
         item.replacement,
-        surrounding.code,
-        replace,
+        search,
+        sourceQuote,
       )
     }
   }
@@ -211,25 +212,15 @@ function replaceQuote(code: string, target: string, replace: string): string {
   return res
 }
 
-function getSurrounding(code: string, start: number, end: number) {
-  const empty = new Set<string | undefined>([' ', '\n', '\r', '\t'])
-  let startIndex = start - 1
-  let endIndex = end
-
-  while (startIndex > 0 && empty.has(code.at(startIndex))) {
-    startIndex--
+function getSourceQuote(code: string, start: number, end: number): string | null {
+  const source = code.slice(start, end)
+  const quotes = ['"', '\'']
+  for (const quote of quotes) {
+    if (source.includes(quote)) {
+      return quote
+    }
   }
-
-  while (endIndex < code.length && empty.has(code.at(endIndex))) {
-    endIndex++
-  }
-
-  const prev = startIndex >= 0 ? code.at(startIndex) : ''
-  const next = endIndex < code.length ? code.at(endIndex) : ''
-
-  return prev && next && prev === next
-    ? { code: prev, prevAt: startIndex, nextAt: endIndex }
-    : undefined
+  return null
 }
 
 interface SnippetHandler {
