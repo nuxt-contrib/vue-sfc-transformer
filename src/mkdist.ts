@@ -109,7 +109,7 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
     )
 
     if (!modified) {
-      return
+      return output
     }
 
     const contents = results
