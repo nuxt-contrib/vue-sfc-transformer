@@ -232,7 +232,15 @@ describe('transform typescript script setup', () => {
       const msg = 1
       </script>`
 
-    expect(await declaration(src)).toMatchInlineSnapshot()
+    expect(await declaration(src)).toMatchInlineSnapshot(`
+      "declare const _default: import("vue").DefineComponent<{
+          msg: string;
+      }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
+          msg: string;
+      }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+      export default _default;
+      "
+    `)
   })
 
   async function fixture(src: string): Promise<string> {
