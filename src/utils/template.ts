@@ -1,4 +1,4 @@
-import type { AttributeNode, DirectiveNode, ExpressionNode, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
+import type { AttributeNode, DirectiveNode, ExpressionNode, ForParseResult, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
 
 // copy from `@vue/compiler-dom`
 enum NodeTypes {
@@ -40,6 +40,7 @@ enum NodeTypes {
 interface ExpressionTrack {
   type: NodeTypes
   name?: string
+  forParseResult?: ForParseResult
 }
 
 interface Expression {
@@ -254,11 +255,26 @@ const defaultSnippetHandler: SnippetHandler = {
   standalone: false,
 }
 
-const vSlotSnippetHandler: SnippetHandler = {
+const destructureSnippetHandler: SnippetHandler = {
   key: (node) => {
+    const key = `destructure$:${node.src}`
+    const lastTrack = node.track.at(-1)
     const secondLastTrack = node.track.at(-2)
+
+    // v-slot:xxx="{ name }"
     if (secondLastTrack?.type === NodeTypes.DIRECTIVE && secondLastTrack.name === 'slot') {
-      return `vSlot$:${node.src}`
+      return key
+    }
+
+    // v-for="({ name }, key,   index) of items"
+    //         ^this     ^this  ^this     ^not this
+    if (
+      secondLastTrack?.type === NodeTypes.DIRECTIVE
+      && secondLastTrack.name === 'for'
+      && secondLastTrack?.forParseResult
+      && lastTrack !== secondLastTrack.forParseResult.source
+    ) {
+      return key
     }
     return null
   },
@@ -274,7 +290,7 @@ const vSlotSnippetHandler: SnippetHandler = {
   standalone: true,
 }
 
-const snippetHandlers = [vSlotSnippetHandler, defaultSnippetHandler]
+const snippetHandlers = [destructureSnippetHandler, defaultSnippetHandler]
 function getKey(expression: Expression) {
   for (const handler of snippetHandlers) {
     const key = handler.key(expression)
@@ -339,7 +355,8 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
 
     // transform standalone snippets
     await Promise.all(standalone.map(async ({ id, handler, nodes }) => {
-      const line = await transform(handler.prepare(nodes[0], id))
+      const prepared = handler.prepare(nodes[0], id)
+      const line = await transform(prepared)
 
       const res = handler.parse(line.trim(), id)
       if (!res) {
