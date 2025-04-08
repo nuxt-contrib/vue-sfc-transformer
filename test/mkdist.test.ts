@@ -220,7 +220,12 @@ describe('transform typescript script setup', () => {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
     await writeFile(join(tmpDir, 'src/index.vue'), src)
-    await mkdist({ loaders: ['js', vueLoader], rootDir: tmpDir })
+    await mkdist({
+      loaders: ['js', vueLoader],
+      rootDir: tmpDir,
+      // @ts-expect-error internal flag for testing
+      _verify: true,
+    })
     return await readFile(join(tmpDir, 'dist/index.vue'), 'utf-8')
   }
 })
