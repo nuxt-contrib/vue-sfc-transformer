@@ -3,6 +3,16 @@ import { parse } from 'vue/compiler-sfc'
 import { preTranspileScriptSetup } from '../src/utils/script-setup'
 
 describe('transform typescript script setup', () => {
+  it('throws error if no script setup block is present', async () => {
+    const sfc = parse(`<template><div></div></template><script></script>`, {
+      filename: 'test.vue',
+      ignoreEmpty: true,
+    })
+    await expect(preTranspileScriptSetup(sfc.descriptor, 'test.vue')).rejects.toThrow(
+      '[vue-sfc-transformer] No script setup block found',
+    )
+  })
+
   it('defineProps', async () => {
     expect(
       await fixture(
@@ -111,6 +121,10 @@ describe('transform typescript script setup', () => {
         })
       </script>"
     `)
+
+    await expect(fixture(`<script setup lang="ts">withDefaults(defineProps<{ msg?: string }>())</script>`)).rejects.toThrow(`[vue-sfc-transformer] The 2nd argument of withDefaults is required.`)
+
+    await expect(fixture(`<script setup lang="ts">withDefaults()</script>`)).rejects.toThrow(`[vue-sfc-transformer] withDefaults' first argument must be a defineProps call.`)
   })
 
   it('defineEmits', async () => {
@@ -159,6 +173,8 @@ describe('transform typescript script setup', () => {
       defineEmits(["click"])
       </script>"
     `)
+
+    await expect(fixture(`<script setup lang="ts">defineEmits<{ click: [] }>('click')</script>`)).rejects.toThrow(`[vue-sfc-transformer] defineEmits() cannot accept both type and non-type arguments at the same time. Use one or the other.`)
   })
 
   it('defineModel', async () => {
@@ -189,6 +205,15 @@ describe('transform typescript script setup', () => {
     `)
     expect(
       await fixture(
+        `<script setup lang="ts">defineModel<string | number | string[]>('msg')</script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup>
+      defineModel("msg", { type: [String,Number,Array] })
+      </script>"
+    `)
+    expect(
+      await fixture(
         `<script setup lang="ts">defineModel<string>({ required: true })</script>`,
       ),
     ).toMatchInlineSnapshot(`
@@ -205,6 +230,8 @@ describe('transform typescript script setup', () => {
       defineModel("msg", { type: String, ...{ required: true } })
       </script>"
     `)
+
+    await expect(fixture('<script setup lang="ts">defineModel("foo", "bar")</script>')).rejects.toThrow(`[vue-sfc-transformer] defineModel()'s second argument must be an object.`)
   })
 
   async function fixture(src: string): Promise<string> {

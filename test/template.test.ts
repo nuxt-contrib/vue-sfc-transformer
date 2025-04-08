@@ -74,6 +74,12 @@ describe('transform typescript template', () => {
     ).toMatchInlineSnapshot(`"<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>"`)
   })
 
+  it('compound expressions', async () => {
+    expect(await fixture(`<slot :name="(foo as string) + bar" />`)).toEqual(
+      `<slot :name="foo + bar" />`,
+    )
+  })
+
   it('custom directives', async () => {
     expect(
       await fixture(`<div v-highlight="(highlight as boolean)" />`),

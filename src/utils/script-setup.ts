@@ -24,7 +24,7 @@ const DEFINE_MODEL = 'defineModel'
  */
 export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string): Promise<SFCScriptBlock> {
   if (!sfc.scriptSetup) {
-    throw new Error('No script setup block found')
+    throw new Error('[vue-sfc-transformer] No script setup block found')
   }
   const context = await prepareContext(sfc as SFCDescriptor & { scriptSetup: SFCScriptBlock }, id)
   const resultBuilder = new context.utils.MagicString(sfc.scriptSetup.content)
@@ -104,10 +104,10 @@ function processDefineEmits(node: Expression, context: Context): string | undefi
     return
   }
 
-  const emitsRuntimeDecl = node.arguments[0]
   if (!node.typeParameters) {
     return
   }
+  const emitsRuntimeDecl = node.arguments[0]
   if (emitsRuntimeDecl) {
     context.ctx.error(
       `${DEFINE_EMITS}() cannot accept both type and non-type arguments `
@@ -228,10 +228,7 @@ function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [Str
   const [arg0, arg1] = node.arguments
   if (arg0 && arg0.type === 'StringLiteral') {
     if (arg1 && arg1.type !== 'ObjectExpression') {
-      context.ctx.error(
-        `${DEFINE_MODEL}()'s second argument must be an object.`,
-        arg1,
-      )
+      context.ctx.error(`${DEFINE_MODEL}()'s second argument must be an object.`, arg1)
     }
 
     return [arg0, arg1 as ObjectExpression]
