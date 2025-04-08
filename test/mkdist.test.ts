@@ -1,12 +1,12 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { mkdist } from 'mkdist'
 import { afterAll, describe, expect, it } from 'vitest'
 import { vueLoader } from '../src/mkdist'
 
 describe('transform typescript script setup', () => {
-  const tmpDir = join(tmpdir(), 'fixtures')
+  const tmpDir = fileURLToPath(new URL('./.tmp/fixtures', import.meta.url))
   afterAll(async () => {
     await rm(tmpDir, { force: true, recursive: true })
   })
@@ -196,16 +196,16 @@ describe('transform typescript script setup', () => {
     expect(
       await fixture(
         `<template>
-          <div :data-test="toValue('hello')" />
-        </template>
-        <script setup lang="ts">
-        import { toValue, type Ref } from 'vue'
-        const msg = 1
-        </script>`,
+            <div :data-test="toValue('hello')" />
+          </template>
+          <script setup lang="ts">
+          import { toValue, type Ref } from 'vue'
+          const msg = 1
+          </script>`,
       ),
     ).toMatchInlineSnapshot(`
       "<template>
-                <div :data-test="toValue('hello')" />
+                  <div :data-test="toValue('hello')" />
       </template>
 
       <script setup>
@@ -216,11 +216,46 @@ describe('transform typescript script setup', () => {
     `)
   })
 
+  it('generates declaration', { timeout: 10000 }, async () => {
+    const src = `
+      <template>
+        <div :data-test="toValue('hello')" />
+      </template>
+
+      <script>
+        export default { name: 'App' }
+      </script>
+
+      <script setup lang="ts">
+      defineProps<{ msg: string }>()
+      import { toValue, type Ref } from 'vue'
+      const msg = 1
+      </script>`
+
+    expect(await declaration(src)).toMatchInlineSnapshot(`
+      "declare const _default: import("vue").DefineComponent<{
+          msg: string;
+      }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
+          msg: string;
+      }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+      export default _default;
+      "
+    `)
+  })
+
   async function fixture(src: string): Promise<string> {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
     await writeFile(join(tmpDir, 'src/index.vue'), src)
     await mkdist({ loaders: ['js', vueLoader], rootDir: tmpDir })
     return await readFile(join(tmpDir, 'dist/index.vue'), 'utf-8')
+  }
+
+  async function declaration(src: string): Promise<string> {
+    await rm(tmpDir, { force: true, recursive: true })
+    await mkdir(join(tmpDir, 'src'), { recursive: true })
+    await writeFile(join(tmpDir, 'src/index.vue'), src)
+    await mkdist({ declaration: true, loaders: ['js', vueLoader], rootDir: tmpDir })
+    return await readFile(join(tmpDir, 'dist/index.vue.d.ts'), 'utf-8')
   }
 })

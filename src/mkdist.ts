@@ -83,12 +83,13 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
     }
 
     // generate dts
-    await context.loadFile({
+    const files = await context.loadFile({
       path: `${input.path}.js`,
       srcPath: `${input.srcPath}.js`,
       extension: '.js',
       getContents: () => 'export default {}',
     })
+    addOutput(...files?.filter(f => f.declaration) || [])
 
     const results = await Promise.all(
       blocks.map(async (data) => {
