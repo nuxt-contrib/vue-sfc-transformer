@@ -70,7 +70,8 @@
     "typescript": "5.8.3",
     "unbuild": "3.5.0",
     "vitest": "3.1.1",
-    "vue": "3.5.13"
+    "vue": "3.5.13",
+    "vue-tsc": "^2.2.8"
   },
   "resolutions": {
     "vue-sfc-transformer": "link:."
