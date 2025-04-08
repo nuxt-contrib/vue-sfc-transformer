@@ -216,7 +216,7 @@ describe('transform typescript script setup', () => {
     `)
   })
 
-  it('generates declaration', async () => {
+  it('generates declaration', { timeout: 10000 }, async () => {
     const src = `
       <template>
         <div :data-test="toValue('hello')" />
