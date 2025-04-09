@@ -95,7 +95,7 @@ function processDefineProps(node: Expression, context: Context): string | undefi
   }
 
   context.ctx.propsTypeDecl = propsTypeDecl
-  const propsStr = context.utils.extractRuntimeProps(context.ctx)
+  const propsStr = context.utils.extractRuntimeProps(context.ctx) || '{}'
 
   return `${DEFINE_PROPS}(${propsStr})`
 }
