@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { transform } from 'esbuild'
 import { resolveModulePath } from 'exsolve'
 import { describe, expect, it } from 'vitest'
-import { transpileVueTemplate } from '../src/utils/template'
+import { replaceQuote, transpileVueTemplate } from '../src/utils/template'
 
 describe('transform typescript template', () => {
   it('v-for', async () => {
@@ -170,6 +170,18 @@ describe('transform typescript template', () => {
               <MyComponent #template="{ item, index = 3, level }" />
             </div>"
     `)
+  })
+
+  it('handles deeply nested templates', async () => {
+    const nestedTemplate = `<div><span><p>{{ (data as any).value }}</p></span></div>`
+    const result = await fixture(nestedTemplate)
+    expect(result).toEqual('<div><span><p>{{ data.value }}</p></span></div>')
+  })
+
+  it('replaces quotes correctly', () => {
+    const input = `\"test\"`
+    const output = replaceQuote(input, '\"', '\'')
+    expect(output).toBe(`'test'`)
   })
 
   async function fixture(src: string) {

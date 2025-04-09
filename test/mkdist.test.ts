@@ -2,8 +2,9 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { mkdist } from 'mkdist'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { vueLoader } from '../src/mkdist'
+import { cleanupBreakLine, defineDefaultBlockLoader } from '../src/utils/mkdist'
 
 describe('transform typescript script setup', () => {
   const tmpDir = fileURLToPath(new URL('../node_modules/.tmp/fixtures', import.meta.url))
@@ -248,6 +249,155 @@ describe('transform typescript script setup', () => {
       export default _default;
       "
     `)
+  })
+  it('generates contents with multiple blocks', async () => {
+    const src = `
+      <template>
+        <div>Hello World</div>
+      </template>
+
+      <script lang="ts">
+        export default { name: 'App' }
+      </script>
+
+      <style scoped>
+        div { color: red; }
+      </style>`
+
+    expect(await fixture(src)).toMatchInlineSnapshot(`
+      "<template>
+              <div>Hello World</div>
+      </template>
+
+      <script>
+      export default { name: "App" };
+      </script>
+
+      <style scoped>
+              div { color: red; }
+      </style>
+      "
+    `)
+  })
+
+  it('handles empty blocks gracefully', async () => {
+    const src = `
+      <template></template>
+      <script></script>
+      <style></style>`
+
+    expect(await fixture(src)).toMatchInlineSnapshot(`
+      "
+            <template></template>
+            <script></script>
+            <style></style>"
+    `)
+  })
+
+  it('sorts blocks by offset', async () => {
+    const src = `
+      <style scoped>
+        div { color: red; }
+      </style>
+
+      <script lang="ts">
+        export default { name: 'App' }
+      </script>
+
+      <template>
+        <div>Hello World</div>
+      </template>`
+
+    expect(await fixture(src)).toMatchInlineSnapshot(`
+      "<style scoped>
+              div { color: red; }
+      </style>
+
+      <script>
+      export default { name: "App" };
+      </script>
+
+      <template>
+              <div>Hello World</div>
+      </template>
+      "
+    `)
+  })
+
+  it('handles attributes in blocks', async () => {
+    const src = `
+      <template lang="html">
+        <div>Hello World</div>
+      </template>
+
+      <script lang="ts">
+        export default { name: 'App' }
+      </script>`
+
+    expect(await fixture(src)).toMatchInlineSnapshot(`
+      "<template lang="html">
+              <div>Hello World</div>
+      </template>
+
+      <script>
+      export default { name: "App" };
+      </script>
+      "
+    `)
+  })
+
+  it('removes unnecessary break lines', async () => {
+    const src = `
+      <template>
+
+
+        <div>Hello World</div>
+
+
+      </template>
+
+      <script lang="ts">
+
+
+        export default { name: 'App' }
+
+
+      </script>`
+
+    expect(await fixture(src)).toMatchInlineSnapshot(`
+      "<template>
+              <div>Hello World</div>
+      </template>
+
+      <script>
+      export default { name: "App" };
+      </script>
+      "
+    `)
+  })
+
+  it('handles invalid .vue files gracefully', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const invalidVue = `<template><div></div>` // Missing closing tags
+    await expect(fixture(invalidVue)).rejects.toThrowError()
+    expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ message: 'Element is missing end tag.' }))
+  })
+
+  it('cleans up excessive break lines', () => {
+    const input = '\n\n\n<div>Test</div>\n\n\n'
+    const output = cleanupBreakLine(input)
+    expect(output).toBe('<div>Test</div>')
+  })
+
+  it('handles unsupported block types in defineDefaultBlockLoader', async () => {
+    const unsupportedBlock = { type: 'unknown', attrs: {}, content: 'test' }
+    // @ts-expect-error invalid unsupported block
+    const result = await defineDefaultBlockLoader({ type: 'script', defaultLang: 'js' })(unsupportedBlock, {
+      loadFile: async () => [],
+      rawInput: { path: '', srcPath: '' },
+      addOutput: () => {},
+    })
+    expect(result).toBeUndefined()
   })
 
   async function fixture(src: string): Promise<string> {

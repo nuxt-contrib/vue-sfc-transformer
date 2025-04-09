@@ -193,7 +193,7 @@ export async function transpileVueTemplate(
   return s.toString()
 }
 
-function replaceQuote(code: string, target: string, replace: string): string {
+export function replaceQuote(code: string, target: string, replace: string): string {
   let res = code
 
   if (res.includes(target)) {

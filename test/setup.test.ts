@@ -234,6 +234,13 @@ describe('transform typescript script setup', () => {
     await expect(fixture('<script setup lang="ts">defineModel("foo", "bar")</script>')).rejects.toThrow(`[vue-sfc-transformer] defineModel()'s second argument must be an object.`)
   })
 
+  it('handles edge cases in processDefineProps', async () => {
+    const script = `<script setup lang=\"ts\">defineProps<{}>()</script>`
+    const sfc = parse(script, { filename: 'test.vue', ignoreEmpty: true })
+    const result = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
+    expect(result.content).toContain('defineProps({})')
+  })
+
   async function fixture(src: string): Promise<string> {
     const sfc = parse(src, {
       filename: 'test.vue',
