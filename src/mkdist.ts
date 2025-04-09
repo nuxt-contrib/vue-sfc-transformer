@@ -109,6 +109,13 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
     )
 
     if (!modified) {
+      addOutput({
+        path: input.path,
+        srcPath: input.srcPath,
+        extension: '.vue',
+        contents: raw,
+        declaration: false,
+      })
       return output
     }
 
