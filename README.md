@@ -20,7 +20,6 @@ pnpm install vue-sfc-transformer
 ```
 
 ```js
-import { parse as parseDOM } from '@vue/compiler-dom'
 import { parse as parseSFC } from '@vue/compiler-sfc'
 import { transform } from 'esbuild'
 
@@ -38,40 +37,28 @@ defineProps<{
 </script>
 `
 
-const transpiledTemplate = await transpileVueTemplate(
-  src,
-  parseDOM(src, { parseMode: 'base' }),
-  0,
+const sfc = parseSFC(src, {
+  filename: 'test.vue',
+  ignoreEmpty: true,
+})
+
+// transpile template block
+const templateBlockContents = await transpileVueTemplate(
+  sfc.descriptor.template.content,
+  sfc.descriptor.template.ast,
+  sfc.descriptor.template.loc.start.offset,
   async (code) => {
     const res = await transform(code, { loader: 'ts', target: 'esnext' })
     return res.code
   },
 )
-
-console.log(transpiledTemplate)
-// <template>
-//   <div v-if="test" />
-// </template>
-//
-// <script setup lang="ts">
-// defineProps<{
-//   test?: string
-// }>()
-// </script>
-
-const sfc = parseSFC(transpiledTemplate, {
-  filename: 'test.vue',
-  ignoreEmpty: true,
-})
+console.log(templateBlockContents)
+// <div v-if="test" />
 
 const { content: scriptBlockContents } = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
 console.log(scriptBlockContents)
-
 // defineProps({
-//   test: {
-//     type: String,
-//     required: false
-//   }
+//   test: { type: String, required: false }
 // })
 ```
 
@@ -80,6 +67,8 @@ If you are using `mkdist`, `vue-sfc-transformer` exports a loader you can use:
 ```ts
 import { vueLoader } from 'vue-sfc-transformer/mkdist'
 ```
+
+> `mkdist` will automatically use the loader from `vue-sfc-transformer` when you pass `vue` to the `loaders` option and have this package installed.
 
 ## 💻 Development
 
