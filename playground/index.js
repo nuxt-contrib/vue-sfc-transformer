@@ -1,4 +1,3 @@
-import { parse as parseDOM } from '@vue/compiler-dom'
 import { parse as parseSFC } from '@vue/compiler-sfc'
 import { transform } from 'esbuild'
 
@@ -16,22 +15,26 @@ defineProps<{
 </script>
 `
 
-const transpiledTemplate = await transpileVueTemplate(
-  src,
-  parseDOM(src, { parseMode: 'base' }),
-  0,
+const sfc = parseSFC(src, {
+  filename: 'test.vue',
+  ignoreEmpty: true,
+})
+
+// transpile template block
+const templateBlockContents = await transpileVueTemplate(
+  sfc.descriptor.template.content,
+  sfc.descriptor.template.ast,
+  sfc.descriptor.template.loc.start.offset,
   async (code) => {
     const res = await transform(code, { loader: 'ts', target: 'esnext' })
     return res.code
   },
 )
+console.log(`transpiled <template> block:`)
+console.log(`\`\`\`\n<template>${templateBlockContents}</template>\n\`\`\`\n`)
 
-console.log(transpiledTemplate)
-
-const sfc = parseSFC(transpiledTemplate, {
-  filename: 'test.vue',
-  ignoreEmpty: true,
-})
-
+// transpile script block
+// notice: it is still in typescript, you need to transpile it to javascript later
 const { content: scriptBlockContents } = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
-console.log(scriptBlockContents)
+console.log(`transpiled <script setup> block:`)
+console.log(`\`\`\`\n<script setup lang="ts">${scriptBlockContents}</script>\n\`\`\`\n`)
