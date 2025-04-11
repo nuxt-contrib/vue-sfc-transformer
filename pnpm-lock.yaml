@@ -56,7 +56,7 @@ importers:
         version: 15.5.0
       mkdist:
         specifier: 2.3.0
-        version: 2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
+        version: 2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
       pkg-pr-new:
         specifier: ^0.0.42
         version: 0.0.42
@@ -68,7 +68,7 @@ importers:
         version: 5.8.3
       unbuild:
         specifier: 3.5.0
-        version: 3.5.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
+        version: 3.5.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
       vitest:
         specifier: 3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.14.0)(sass@1.86.3)
@@ -85,9 +85,6 @@ importers:
         specifier: link:..
         version: link:..
     devDependencies:
-      '@vue/compiler-dom':
-        specifier: 3.5.13
-        version: 3.5.13
       '@vue/compiler-sfc':
         specifier: 3.5.13
         version: 3.5.13
@@ -3459,8 +3456,8 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
 
-  vue-sfc-transformer@0.1.7:
-    resolution: {integrity: sha512-9VU4yzO2qoYqLpGhviMNRypyB26HA5KLYb8dsNCaPBnGN/tRW0qmu46+NGb/ps4YjxnYSkozeU1EUEcFTqMUZg==}
+  vue-sfc-transformer@0.1.10:
+    resolution: {integrity: sha512-cGc+15xzK27TnfM4q0Kx+Byif9gpeDtbsEFC/OANkjy6iKOJ9x0nkqLPxUfaMtdBOCUEzINOZhJZ82zspl2cwg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       esbuild: '*'
@@ -6197,7 +6194,7 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
-  mkdist@2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3)):
+  mkdist@2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       autoprefixer: 10.4.21(postcss@8.5.3)
       citty: 0.1.6
@@ -6216,7 +6213,7 @@ snapshots:
       sass: 1.86.3
       typescript: 5.8.3
       vue: 3.5.13(typescript@5.8.3)
-      vue-sfc-transformer: 0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3))
+      vue-sfc-transformer: 0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3))
       vue-tsc: 2.2.8(typescript@5.8.3)
 
   mlly@1.7.4:
@@ -6950,7 +6947,7 @@ snapshots:
 
   ufo@1.5.4: {}
 
-  unbuild@3.5.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3)):
+  unbuild@3.5.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       '@rollup/plugin-alias': 5.1.1(rollup@4.39.0)
       '@rollup/plugin-commonjs': 28.0.2(rollup@4.39.0)
@@ -6966,7 +6963,7 @@ snapshots:
       hookable: 5.5.3
       jiti: 2.4.2
       magic-string: 0.30.17
-      mkdist: 2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
+      mkdist: 2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
       mlly: 1.7.4
       pathe: 2.0.3
       pkg-types: 2.1.0
@@ -7141,7 +7138,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vue-sfc-transformer@0.1.7(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)):
+  vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       '@babel/parser': 7.27.0
       esbuild: 0.25.2
