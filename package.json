@@ -62,7 +62,7 @@
     "eslint": "9.24.0",
     "exsolve": "1.0.4",
     "installed-check": "9.3.0",
-    "knip": "5.50.2",
+    "knip": "5.50.3",
     "lint-staged": "15.5.1",
     "mkdist": "2.3.0",
     "pkg-pr-new": "0.0.42",
