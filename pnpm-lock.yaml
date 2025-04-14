@@ -58,7 +58,7 @@ importers:
         specifier: 2.3.0
         version: 2.3.0(sass@1.86.3)(typescript@5.8.3)(vue-sfc-transformer@0.1.10(esbuild@0.25.2)(vue@3.5.13(typescript@5.8.3)))(vue-tsc@2.2.8(typescript@5.8.3))(vue@3.5.13(typescript@5.8.3))
       pkg-pr-new:
-        specifier: ^0.0.42
+        specifier: 0.0.42
         version: 0.0.42
       simple-git-hooks:
         specifier: 2.12.1
@@ -76,7 +76,7 @@ importers:
         specifier: 3.5.13
         version: 3.5.13(typescript@5.8.3)
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(typescript@5.8.3)
 
   playground:
