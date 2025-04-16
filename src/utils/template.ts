@@ -164,6 +164,10 @@ export async function transpileVueTemplate(
   for (const item of expressions) {
     item.replacement = transformMap.get(item) ?? item.src
 
+    if (!shouldReplaceQuote(item)) {
+      continue
+    }
+
     // the source should only have one of the quotes
     const sourceQuote = getSourceQuote(
       content,
@@ -210,6 +214,20 @@ export function replaceQuote(code: string, target: string, replace: string): str
   }
 
   return res
+}
+
+function shouldReplaceQuote(expression: Expression): boolean {
+  if (!expression.src.includes(`'`) && !expression.src.includes(`"`)) {
+    return false
+  }
+
+  // skip the expression in the interpolation, it doesn't care about the quote
+  const secondLastTrack = expression.track.at(-2)
+  if (secondLastTrack?.type === NodeTypes.INTERPOLATION) {
+    return false
+  }
+
+  return true
 }
 
 function getSourceQuote(code: string, start: number, end: number): string | null {

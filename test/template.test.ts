@@ -184,6 +184,32 @@ describe('transform typescript template', () => {
     expect(output).toBe(`'test'`)
   })
 
+  it('handles quotes in interpolations', async () => {
+    expect(
+      await fixture(`
+        <template>
+          <div>
+            <div :class="$test('foobar', \`Foobar 'test'\`)" />
+            <div>{{ $test('foobar', "Foobar 'test'") }}</div>
+            <div>{{ $test('foobar', 'Foobar test') }}</div>
+            <div>{{ $test('foobar', \`Foobar ' " ''" test\`) }}</div>
+          </div>
+        </template>
+        `),
+    ).toMatchInlineSnapshot(`
+      "
+              <template>
+                <div>
+                  <div :class="$test('foobar', \`Foobar \\'test\\'\`)" />
+                  <div>{{ $test("foobar", "Foobar 'test'") }}</div>
+                  <div>{{ $test("foobar", "Foobar test") }}</div>
+                  <div>{{ $test("foobar", \`Foobar ' " ''" test\`) }}</div>
+                </div>
+              </template>
+              "
+    `)
+  })
+
   async function fixture(src: string) {
     const requireFromVue = createRequire(resolveModulePath('vue'))
     const { parse } = requireFromVue('@vue/compiler-dom') as typeof import('@vue/compiler-dom')
