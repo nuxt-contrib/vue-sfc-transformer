@@ -201,7 +201,7 @@ describe('transform typescript template', () => {
               <template>
                 <div>
                   <div :class="$test('foobar', \`Foobar \\'test\\'\`)" />
-                  <div>{{ $test("foobar", "Foobar \\"test\\"") }}</div>
+                  <div>{{ $test("foobar", "Foobar 'test'") }}</div>
                   <div>{{ $test("foobar", "Foobar test") }}</div>
                   <div>{{ $test("foobar", \`Foobar ' " ''" test\`) }}</div>
                 </div>
