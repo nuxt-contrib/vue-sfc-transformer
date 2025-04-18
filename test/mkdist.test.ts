@@ -400,6 +400,16 @@ describe('transform typescript script setup', () => {
     expect(result).toBeUndefined()
   })
 
+  it('throws error when block loader fails', async () => {
+    const src = `
+      <script setup lang="ts">
+        const props =
+      </script>
+    `
+
+    await expect(fixture(src)).rejects.toThrow('[vue-sfc-transformer] Failed to load the script block in')
+  })
+
   async function fixture(src: string): Promise<string> {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
