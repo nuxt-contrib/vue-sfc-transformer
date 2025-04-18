@@ -100,7 +100,10 @@ function defineVueLoader(options?: DefineVueLoaderOptions): Loader {
           rawInput: input,
           addOutput,
           requireTranspileTemplate: isTs,
+        }).catch((cause) => {
+          throw new Error(`[vue-sfc-transformer] Failed to load the ${data.type} block in ${input.srcPath}`, { cause })
         })
+
         if (result) {
           modified = true
         }
