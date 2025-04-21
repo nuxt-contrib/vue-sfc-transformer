@@ -2,7 +2,7 @@
   "name": "vue-sfc-transformer",
   "type": "module",
   "version": "0.1.11",
-  "packageManager": "pnpm@10.8.1",
+  "packageManager": "pnpm@10.9.0",
   "description": "Tools for minimal TypeScript transpilation of Vue SFCs",
   "license": "MIT",
   "repository": "nuxt-contrib/vue-sfc-transformer",
