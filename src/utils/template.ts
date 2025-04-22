@@ -1,4 +1,5 @@
-import type { AttributeNode, DirectiveNode, ExpressionNode, ForParseResult, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
+import type { AttributeNode, DirectiveNode, ExpressionNode, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
+import { isFnExpressionBrowser as isFnExpression, isMemberExpressionBrowser as isMemberExpression } from '@vue/compiler-core'
 
 // copy from `@vue/compiler-dom`
 enum NodeTypes {
@@ -37,14 +38,8 @@ enum NodeTypes {
   JS_RETURN_STATEMENT,
 }
 
-interface ExpressionTrack {
-  type: NodeTypes
-  name?: string
-  forParseResult?: ForParseResult
-}
-
 interface Expression {
-  track: ExpressionTrack[]
+  track: VueTemplateNode[]
   loc: SourceLocation
   src: string
   replacement?: string
@@ -60,7 +55,7 @@ type VueTemplateNode =
 function handleNode(
   node: VueTemplateNode | undefined,
   addExpression: (...expressions: Expression[]) => void,
-  track: ExpressionTrack[],
+  track: VueTemplateNode[],
 ) {
   if (!node) {
     return
@@ -264,6 +259,43 @@ const defaultSnippetHandler: SnippetHandler = {
   standalone: false,
 }
 
+const multipleStatementsSnippetHandler: SnippetHandler = {
+  key: (node) => {
+    const key = `multipleStatements$:${node.src}`
+    const secondLastTrack = node.track.at(-2)
+    const lastTrack = node.track.at(-1)
+
+    if (
+      lastTrack?.type === NodeTypes.SIMPLE_EXPRESSION
+      && secondLastTrack?.type === NodeTypes.DIRECTIVE
+      && secondLastTrack.name === 'on'
+    ) {
+      const isMemberExp = isMemberExpression(lastTrack)
+      const isInlineStatement = !(isMemberExp || isFnExpression(lastTrack))
+
+      const hasMultipleStatements = node.src.includes(';')
+
+      if ((isInlineStatement || isMemberExp) && hasMultipleStatements) {
+        return key
+      }
+    }
+
+    return null
+  },
+  prepare: (node, id) => `wrapper_${id}(() => {${node.src}});`,
+  parse: (code) => {
+    const wrapperRegex = /^(wrapper_\d+)\(\(\) => \{([\s\S]*?)\}\);$/
+
+    const [_, wrapperName, res] = code.trim().match(wrapperRegex) ?? []
+    if (!wrapperName || !res) {
+      return undefined
+    }
+
+    return res.trim().replace(/;$/, '')
+  },
+  standalone: false,
+}
+
 const destructureSnippetHandler: SnippetHandler = {
   key: (node) => {
     const key = `destructure$:${node.src}`
@@ -299,7 +331,7 @@ const destructureSnippetHandler: SnippetHandler = {
   standalone: true,
 }
 
-const snippetHandlers = [destructureSnippetHandler, defaultSnippetHandler]
+const snippetHandlers = [destructureSnippetHandler, multipleStatementsSnippetHandler, defaultSnippetHandler]
 function getKey(expression: Expression) {
   for (const handler of snippetHandlers) {
     const key = handler.key(expression)

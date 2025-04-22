@@ -58,6 +58,22 @@ describe('transform typescript template', () => {
         ping();
       }" />"
     `)
+
+    // https://github.com/nuxt/module-builder/issues/587#issuecomment-2820414064
+    expect(
+      await fixture(`<div @click="a(); b()" />`),
+    ).toMatchInlineSnapshot(`
+      "<div @click="a();
+        b()" />"
+    `)
+    expect(
+      await fixture(`<div @click="a(); () => {}; b()" />`),
+    ).toMatchInlineSnapshot(`
+      "<div @click="a();
+        () => {
+        };
+        b()" />"
+    `)
   })
 
   it('v-slot', async () => {
