@@ -1,7 +1,7 @@
 {
   "name": "vue-sfc-transformer",
   "type": "module",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "packageManager": "pnpm@10.9.0",
   "description": "Tools for minimal TypeScript transpilation of Vue SFCs",
   "license": "MIT",
