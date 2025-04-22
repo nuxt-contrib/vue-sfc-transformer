@@ -14,9 +14,6 @@ importers:
       '@babel/parser':
         specifier: ^7.27.0
         version: 7.27.0
-      '@vue/compiler-core':
-        specifier: ^3.5.13
-        version: 3.5.13
     devDependencies:
       '@antfu/eslint-config':
         specifier: 4.12.0
@@ -30,6 +27,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 3.1.2
         version: 3.1.2(vitest@3.1.2(@types/debug@4.1.12)(@types/node@22.14.1)(sass@1.86.3))
+      '@vue/compiler-core':
+        specifier: 3.5.13
+        version: 3.5.13
       '@vue/compiler-dom':
         specifier: 3.5.13
         version: 3.5.13

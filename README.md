@@ -13,10 +13,10 @@ Install package:
 
 ```sh
 # npm
-npm install vue-sfc-transformer
+npm install vue-sfc-transformer vue @vue/compiler-core esbuild
 
 # pnpm
-pnpm install vue-sfc-transformer
+pnpm install vue-sfc-transformer vue @vue/compiler-core esbuild
 ```
 
 ```js
