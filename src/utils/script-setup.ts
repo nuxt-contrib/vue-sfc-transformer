@@ -171,8 +171,21 @@ function processDefineModel(node: Expression, context: Context): string | undefi
     return
   }
 
-  const model = context.utils.inferRuntimeType(context.ctx, modelTypeDecl).filter(i => i !== 'Unknown')
-  if (!model || model.length === 0 || model[0] === 'Unknown') {
+  let model = context.utils.inferRuntimeType(context.ctx, modelTypeDecl)
+  let skipCheck = false
+  const hasBoolean = model.includes('Boolean')
+  const hasFunction = model.includes('Function')
+  const hasUnknownType = model.includes('Unknown')
+  if (hasUnknownType) {
+    if (hasBoolean || hasFunction) {
+      skipCheck = true
+      model = model.filter(t => t !== 'Unknown')
+    }
+    else {
+      model = ['null']
+    }
+  }
+  if (!model || model.length === 0) {
     return
   }
 
@@ -218,8 +231,9 @@ function processDefineModel(node: Expression, context: Context): string | undefi
   }
 
   const codegenType = model.length === 1 ? model[0] : `[${model.join(', ')}]`
+  const codegenSkipCheck = skipCheck ? 'skipCheck: true' : ''
   const codegenExtra = modelRuntimeDecl ? `...${context.ctx.getString(modelRuntimeDecl)}` : ''
-  codegenArgs.push(`{ ${[`type: ${codegenType}`, codegenExtra].filter(s => !!s).join(', ')} }`)
+  codegenArgs.push(`{ ${[`type: ${codegenType}`, codegenSkipCheck, codegenExtra].filter(s => !!s).join(', ')} }`)
 
   return `${DEFINE_MODEL}(${codegenArgs.join(', ')})`
 }
