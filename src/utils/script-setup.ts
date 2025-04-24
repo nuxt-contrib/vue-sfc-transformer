@@ -171,7 +171,7 @@ function processDefineModel(node: Expression, context: Context): string | undefi
     return
   }
 
-  const model = context.utils.inferRuntimeType(context.ctx, modelTypeDecl)
+  const model = context.utils.inferRuntimeType(context.ctx, modelTypeDecl).filter(i => i !== 'Unknown')
   if (!model || model.length === 0 || model[0] === 'Unknown') {
     return
   }
@@ -217,7 +217,7 @@ function processDefineModel(node: Expression, context: Context): string | undefi
     codegenArgs.push(`"${modelNameDecl.value}"`)
   }
 
-  const codegenType = model.length === 1 ? model[0] : `[${model.join(',')}]`
+  const codegenType = model.length === 1 ? model[0] : `[${model.join(', ')}]`
   const codegenExtra = modelRuntimeDecl ? `...${context.ctx.getString(modelRuntimeDecl)}` : ''
   codegenArgs.push(`{ ${[`type: ${codegenType}`, codegenExtra].filter(s => !!s).join(', ')} }`)
 

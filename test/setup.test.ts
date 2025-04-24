@@ -209,7 +209,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", { type: [String,Number,Array] })
+      defineModel("msg", { type: [String, Number, Array] })
       </script>"
     `)
     expect(
@@ -228,6 +228,15 @@ describe('transform typescript script setup', () => {
     ).toMatchInlineSnapshot(`
       "<script setup>
       defineModel("msg", { type: String, ...{ required: true } })
+      </script>"
+    `)
+    expect(
+      await fixture(
+        `<script setup lang="ts">const model = defineModel <number | undefined>()</script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup>
+      const model = defineModel({ type: Number })
       </script>"
     `)
 
