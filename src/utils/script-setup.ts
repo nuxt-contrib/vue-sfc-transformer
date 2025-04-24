@@ -219,12 +219,6 @@ function processDefineModel(node: Expression, context: Context): string | undefi
     })
   }
 
-  node.typeArguments = undefined
-  node.typeParameters = undefined
-  node.arguments = modelNameDecl
-    ? [modelNameDecl, modelCodegenDecl]
-    : [modelCodegenDecl]
-
   const codegenArgs: string[] = []
   if (modelNameDecl) {
     codegenArgs.push(`"${modelNameDecl.value}"`)
