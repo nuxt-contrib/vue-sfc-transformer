@@ -341,6 +341,12 @@ function getKey(expression: Expression) {
   }
 }
 
+function generateSnippetSplitter() {
+  const identify = Math.floor(Math.random() * 900_000_000) + 100_000_000
+
+  return `\nsplitter(${identify % 10 === 0 ? identify + 1 : identify});\n`
+}
+
 async function transformJsSnippets(expressions: Expression[], transform: (code: string) => Promise<string>): Promise<WeakMap<Expression, string>> {
   const transformMap = new Map<string, { id: number, nodes: [Expression, ...Expression[]], handler: SnippetHandler }>()
 
@@ -368,9 +374,7 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
 
   try {
     // transform all snippets in a single file
-    const batchInputSplitter = `\nsplitter(${
-      Math.floor(Math.random() * 900_000_000) + 100_000_000
-    });\n`
+    const batchInputSplitter = generateSnippetSplitter()
     const batchInput = batch
       .map(({ nodes, handler }) => handler.prepare(nodes[0], id))
       .join(batchInputSplitter)
