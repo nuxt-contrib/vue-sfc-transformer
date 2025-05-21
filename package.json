@@ -76,6 +76,7 @@
     "vue-tsc": "2.2.10"
   },
   "resolutions": {
+    "@vue/compiler-core": "3.5.14",
     "vue-sfc-transformer": "link:."
   },
   "simple-git-hooks": {
