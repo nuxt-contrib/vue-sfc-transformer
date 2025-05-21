@@ -2,7 +2,7 @@
   "name": "vue-sfc-transformer",
   "type": "module",
   "version": "0.1.15",
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.11.0",
   "description": "Tools for minimal TypeScript transpilation of Vue SFCs",
   "license": "MIT",
   "repository": "nuxt-contrib/vue-sfc-transformer",
@@ -52,22 +52,22 @@
     "@babel/parser": "^7.27.0"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "4.13.0",
+    "@antfu/eslint-config": "4.13.2",
     "@babel/types": "7.27.1",
-    "@types/node": "22.15.17",
+    "@types/node": "22.15.21",
     "@vitest/coverage-v8": "3.1.4",
-    "@vue/compiler-core": "3.5.13",
-    "@vue/compiler-dom": "3.5.13",
-    "bumpp": "10.1.0",
-    "changelogithub": "13.13.0",
+    "@vue/compiler-core": "3.5.14",
+    "@vue/compiler-dom": "3.5.14",
+    "bumpp": "10.1.1",
+    "changelogithub": "13.14.0",
     "esbuild": "0.25.4",
     "eslint": "9.27.0",
     "exsolve": "1.0.5",
     "installed-check": "9.3.0",
-    "knip": "5.55.1",
+    "knip": "5.57.0",
     "lint-staged": "16.0.0",
     "mkdist": "2.3.0",
-    "pkg-pr-new": "0.0.44",
+    "pkg-pr-new": "0.0.50",
     "simple-git-hooks": "2.13.0",
     "typescript": "5.8.3",
     "unbuild": "3.5.0",
@@ -76,6 +76,7 @@
     "vue-tsc": "2.2.10"
   },
   "resolutions": {
+    "@vue/compiler-core": "3.5.14",
     "vue-sfc-transformer": "link:."
   },
   "simple-git-hooks": {
