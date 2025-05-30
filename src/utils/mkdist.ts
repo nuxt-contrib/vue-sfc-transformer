@@ -206,7 +206,7 @@ export function defineDefaultBlockLoader(options: DefaultBlockLoaderOptions): Vu
 
 const templateLoader: VueBlockLoader = async (
   rawBlock,
-  { requireTranspileTemplate, loadFile, rawInput },
+  { requireTranspileTemplate },
 ) => {
   if (rawBlock.type !== 'template') {
     return
@@ -223,16 +223,6 @@ const templateLoader: VueBlockLoader = async (
     block.content,
     block.ast!,
     block.loc.start.offset,
-    async (code) => {
-      const res = await loadFile({
-        getContents: () => code,
-        path: `${rawInput.path}.ts`,
-        srcPath: `${rawInput.srcPath}.ts`,
-        extension: '.ts',
-      })
-
-      return res?.find(f => (['.js', '.mjs', '.cjs'] as Array<string | undefined>).includes(f.extension))?.contents || code
-    },
   )
 
   return {

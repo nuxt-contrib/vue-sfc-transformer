@@ -143,7 +143,6 @@ export async function transpileVueTemplate(
   content: string,
   root: RootNode,
   offset = 0,
-  transform: (code: string) => Promise<string> = async code => transpile(code),
 ): Promise<string> {
   const { MagicString } = await import('vue/compiler-sfc')
   const expressions: Expression[] = []
@@ -156,7 +155,7 @@ export async function transpileVueTemplate(
 
   const s = new MagicString(content)
 
-  const transformMap = await transformJsSnippets(expressions, transform)
+  const transformMap = transformJsSnippets(expressions, code => transpile(code))
   for (const item of expressions) {
     item.replacement = transformMap.get(item) ?? item.src
 
@@ -347,7 +346,7 @@ function generateSnippetSplitter() {
   return `\nsplitter(${JSON.stringify(identify)});\n`
 }
 
-async function transformJsSnippets(expressions: Expression[], transform: (code: string) => Promise<string>): Promise<WeakMap<Expression, string>> {
+function transformJsSnippets(expressions: Expression[], transform: (code: string) => string): WeakMap<Expression, string> {
   const transformMap = new Map<string, { id: number, nodes: [Expression, ...Expression[]], handler: SnippetHandler }>()
 
   let id = 0
@@ -379,7 +378,7 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
       .map(({ nodes, handler }) => handler.prepare(nodes[0], id))
       .join(batchInputSplitter)
 
-    const batchOutput = await transform(batchInput)
+    const batchOutput = transform(batchInput)
     const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
 
     if (lines.length !== batch.length) {
@@ -401,9 +400,9 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
     }
 
     // transform standalone snippets
-    await Promise.all(standalone.map(async ({ id, handler, nodes }) => {
+    standalone.forEach(({ id, handler, nodes }) => {
       const prepared = handler.prepare(nodes[0], id)
-      const line = await transform(prepared)
+      const line = transform(prepared)
 
       const res = handler.parse(line.trim(), id)
       if (!res) {
@@ -413,7 +412,7 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
       for (const node of nodes) {
         resultMap.set(node, res)
       }
-    }))
+    })
   }
   catch (error) {
     throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
