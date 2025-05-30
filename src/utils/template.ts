@@ -173,25 +173,6 @@ export async function transpileVueTemplate(
   return s.toString()
 }
 
-export function replaceQuote(code: string, target: string, replace: string): string {
-  let res = code
-
-  if (res.includes(target)) {
-    /**
-     * Due to the way Vue parses templates,
-     * the symbol of target would never appear in the code.
-     * We just need to replace the symbol of target.
-     *
-     * But for replace symbol exist in code, we need to escape it,
-     * because esbuild have removed the escape character.
-     */
-    res = res.replaceAll(replace, `\\${replace}`)
-    res = res.replaceAll(target, replace)
-  }
-
-  return res
-}
-
 interface SnippetHandler {
   key: (node: Expression) => string | null
   prepare: (node: Expression, id: number) => string

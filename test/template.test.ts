@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import { resolveModulePath } from 'exsolve'
 import { describe, expect, it } from 'vitest'
-import { replaceQuote, transpileVueTemplate } from '../src/utils/template'
+import { transpileVueTemplate } from '../src/utils/template'
 
 describe('transform typescript template', () => {
   it('v-for', async () => {
@@ -178,12 +178,6 @@ describe('transform typescript template', () => {
     const nestedTemplate = `<div><span><p>{{ (data as any).value }}</p></span></div>`
     const result = await fixture(nestedTemplate)
     expect(result).toMatchInlineSnapshot(`"<div><span><p>{{ (data       ).value }}</p></span></div>"`)
-  })
-
-  it('replaces quotes correctly', () => {
-    const input = `\"test\"`
-    const output = replaceQuote(input, '\"', '\'')
-    expect(output).toBe(`'test'`)
   })
 
   it('handles quotes in interpolations', async () => {
