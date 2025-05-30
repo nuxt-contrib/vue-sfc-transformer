@@ -43,9 +43,6 @@ importers:
       changelogithub:
         specifier: 13.14.0
         version: 13.14.0(magicast@0.3.5)
-      esbuild:
-        specifier: 0.25.4
-        version: 0.25.4
       eslint:
         specifier: 9.27.0
         version: 9.27.0(jiti@2.4.2)
