@@ -13,16 +13,14 @@ Install package:
 
 ```sh
 # npm
-npm install vue-sfc-transformer vue @vue/compiler-core esbuild
+npm install vue-sfc-transformer vue @vue/compiler-core
 
 # pnpm
-pnpm install vue-sfc-transformer vue @vue/compiler-core esbuild
+pnpm install vue-sfc-transformer vue @vue/compiler-core
 ```
 
 ```js
 import { parse as parseSFC } from '@vue/compiler-sfc'
-import { transform } from 'esbuild'
-
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
 
 const src = `
@@ -47,10 +45,6 @@ const templateBlockContents = await transpileVueTemplate(
   sfc.descriptor.template.content,
   sfc.descriptor.template.ast,
   sfc.descriptor.template.loc.start.offset,
-  async (code) => {
-    const res = await transform(code, { loader: 'ts', target: 'esnext' })
-    return res.code
-  },
 )
 console.log(templateBlockContents)
 // <div v-if="test" />

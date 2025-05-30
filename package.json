@@ -27,7 +27,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "build": "unbuild",
@@ -45,11 +45,11 @@
   },
   "peerDependencies": {
     "@vue/compiler-core": "^3.5.13",
-    "esbuild": "*",
     "vue": "^3.5.13"
   },
   "dependencies": {
-    "@babel/parser": "^7.27.0"
+    "@babel/parser": "^7.27.0",
+    "oxidase": "^0.0.3"
   },
   "devDependencies": {
     "@antfu/eslint-config": "4.13.2",
@@ -60,7 +60,6 @@
     "@vue/compiler-dom": "3.5.15",
     "bumpp": "10.1.1",
     "changelogithub": "13.14.0",
-    "esbuild": "0.25.4",
     "eslint": "9.27.0",
     "exsolve": "1.0.5",
     "installed-check": "9.3.0",
