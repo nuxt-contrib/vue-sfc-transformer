@@ -1,7 +1,7 @@
 import type { SFCBlock, SFCTemplateBlock } from 'vue/compiler-sfc'
 import type { InputFile, Loader, LoaderContext, LoaderResult, OutputFile } from '../types/mkdist'
 import process from 'node:process'
-import { transform } from 'esbuild'
+import { transpile } from 'oxidase'
 import { preTranspileScriptSetup, transpileVueTemplate } from '../index'
 
 interface DefineVueLoaderOptions {
@@ -237,16 +237,12 @@ const styleLoader = defineDefaultBlockLoader({
   type: 'style',
 })
 
-const scriptLoader: VueBlockLoader = async (block, { options }) => {
+const scriptLoader: VueBlockLoader = async (block) => {
   if (block.type !== 'script') {
     return
   }
 
-  const { code: result } = await transform(block.content, {
-    ...options.esbuild,
-    loader: 'ts',
-    tsconfigRaw: { compilerOptions: { target: 'ESNext', verbatimModuleSyntax: true } },
-  })
+  const result = transpile(block.content)
 
   return {
     type: block.type,
