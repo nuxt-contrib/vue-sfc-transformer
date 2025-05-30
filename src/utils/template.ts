@@ -158,25 +158,6 @@ export async function transpileVueTemplate(
   const transformMap = transformJsSnippets(expressions, code => transpile(code))
   for (const item of expressions) {
     item.replacement = transformMap.get(item) ?? item.src
-
-    if (!shouldReplaceQuote(item)) {
-      continue
-    }
-
-    // the source should only have one of the quotes
-    const sourceQuote = getSourceQuote(
-      content,
-      item.loc.start.offset - offset,
-      item.loc.end.offset - offset,
-    )
-    if (sourceQuote !== null) {
-      const search = sourceQuote === `"` ? `'` : `"`
-      item.replacement = replaceQuote(
-        item.replacement,
-        search,
-        sourceQuote,
-      )
-    }
   }
 
   for (const item of expressions) {
@@ -209,31 +190,6 @@ export function replaceQuote(code: string, target: string, replace: string): str
   }
 
   return res
-}
-
-function shouldReplaceQuote(expression: Expression): boolean {
-  if (!expression.src.includes(`'`) && !expression.src.includes(`"`)) {
-    return false
-  }
-
-  // skip the expression in the interpolation, it doesn't care about the quote
-  const secondLastTrack = expression.track.at(-2)
-  if (secondLastTrack?.type === NodeTypes.INTERPOLATION) {
-    return false
-  }
-
-  return true
-}
-
-function getSourceQuote(code: string, start: number, end: number): string | null {
-  const source = code.slice(start, end)
-  const quotes = ['"', '\'']
-  for (const quote of quotes) {
-    if (source.includes(quote)) {
-      return quote
-    }
-  }
-  return null
 }
 
 interface SnippetHandler {
