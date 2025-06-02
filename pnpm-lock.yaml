@@ -16,8 +16,8 @@ importers:
         specifier: ^7.27.0
         version: 7.27.4
       '@teages/oxc-blank-space':
-        specifier: ^0.1.0
-        version: 0.1.0(typescript@5.8.3)
+        specifier: ^0.1.1
+        version: 0.1.1(typescript@5.8.3)
     devDependencies:
       '@antfu/eslint-config':
         specifier: 4.13.2
@@ -1034,9 +1034,9 @@ packages:
     peerDependencies:
       eslint: '>=9.0.0'
 
-  '@teages/oxc-blank-space@0.1.0':
-    resolution: {integrity: sha512-jxvGT3GZcP1xjy/QtRAX5t9mU5H3NMLdvgnUOeaBDRVag5FeKw2F0PCgIdoj1LdeUV2Sf/Dg7R/x98vUytM6Zg==}
-    engines: {node: ^20.17.0 || >=22.0.0}
+  '@teages/oxc-blank-space@0.1.1':
+    resolution: {integrity: sha512-eLNpk2AF+94Zbt/gqgXX+/FI6vtwi/UWyLtA1iTMm0KMaRjgJlIgPwIfeCN8tMVTBywB4vYDzcMjJX0r5/A/yg==}
+    engines: {node: '>=18.0.0'}
     peerDependencies:
       typescript: ^5.8.3
 
@@ -4326,7 +4326,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@teages/oxc-blank-space@0.1.0(typescript@5.8.3)':
+  '@teages/oxc-blank-space@0.1.1(typescript@5.8.3)':
     dependencies:
       magic-string: 0.30.17
       oxc-parser: 0.72.2
