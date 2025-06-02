@@ -1,90 +1,76 @@
 import { createRequire } from 'node:module'
-import { transform } from 'esbuild'
 import { resolveModulePath } from 'exsolve'
 import { describe, expect, it } from 'vitest'
-import { replaceQuote, transpileVueTemplate } from '../src/utils/template'
+import { transpileVueTemplate } from '../src/utils/template'
 
 describe('transform typescript template', () => {
   it('v-for', async () => {
     expect(await fixture(`<div v-for="item in items as unknown[]" :key="item">{{ item }}</div>`))
-      .toEqual(`<div v-for="item in items" :key="item">{{ item }}</div>`)
+      .toMatchInlineSnapshot(`"<div v-for="item in items             " :key="item">{{ item }}</div>"`)
 
     expect(await fixture(`<div v-for="(item, index) in items as unknown[]" :key="item" :index>{{ item }}</div>`))
-      .toEqual(`<div v-for="(item, index) in items" :key="item" :index>{{ item }}</div>`)
+      .toMatchInlineSnapshot(`"<div v-for="(item, index) in items             " :key="item" :index>{{ item }}</div>"`)
 
     expect(await fixture(`<div v-for="(item, index) of items" />`))
-      .toEqual(`<div v-for="(item, index) of items" />`)
+      .toMatchInlineSnapshot(`"<div v-for="(item, index) of items" />"`)
 
     expect(await fixture(`<div v-for="({ name = 'Tony' }, index) of items" />`))
-      .toEqual(`<div v-for="({ name = 'Tony' }, index) of items" />`)
+      .toMatchInlineSnapshot(`"<div v-for="({ name = 'Tony' }, index) of items" />"`)
   })
 
   it('v-if', async () => {
     expect(await fixture(`<div v-if="(data as any).test" />`))
-      .toEqual(`<div v-if="data.test" />`)
+      .toMatchInlineSnapshot(`"<div v-if="(data       ).test" />"`)
   })
 
   it('v-show', async () => {
-    expect(await fixture(`<div v-show="(data as any).show" />`)).toEqual(
-      `<div v-show="data.show" />`,
+    expect(await fixture(`<div v-show="(data as any).show" />`)).toMatchInlineSnapshot(
+      `"<div v-show="(data       ).show" />"`,
     )
   })
 
   it('v-model', async () => {
-    expect(await fixture(`<input v-model="(data as string)" />`)).toEqual(
-      `<input v-model="data" />`,
+    expect(await fixture(`<input v-model="(data as string)" />`)).toMatchInlineSnapshot(
+      `"<input v-model="(data          )" />"`,
     )
   })
 
   it('v-on', async () => {
     expect(
       await fixture(`<div @click="handleClick as () => void" />`),
-    ).toEqual(`<div @click="handleClick" />`)
-    expect(await fixture(`<div @click="handleClick()" />`)).toEqual(
-      `<div @click="handleClick()" />`,
+    ).toMatchInlineSnapshot(`"<div @click="handleClick              " />"`)
+    expect(await fixture(`<div @click="handleClick()" />`)).toMatchInlineSnapshot(
+      `"<div @click="handleClick()" />"`,
     )
     expect(
       await fixture(
         `<div @click="(e: unknown) => handleClick(e as MouseEvent)" />`,
       ),
-    ).toEqual(`<div @click="(e) => handleClick(e)" />`)
+    ).toMatchInlineSnapshot(`"<div @click="(e         ) => handleClick(e              )" />"`)
     expect(
       await fixture(
         `<div @click="(e: unknown) => { handleClick(e as MouseEvent); ping() }" />`,
       ),
-    ).toMatchInlineSnapshot(`
-      "<div @click="(e) => {
-        handleClick(e);
-        ping();
-      }" />"
-    `)
+    ).toMatchInlineSnapshot(`"<div @click="(e         ) => { handleClick(e              ); ping() }" />"`)
 
     // https://github.com/nuxt/module-builder/issues/587#issuecomment-2820414064
     expect(
       await fixture(`<div @click="a(); b()" />`),
-    ).toMatchInlineSnapshot(`
-      "<div @click="a();
-        b()" />"
-    `)
+    ).toMatchInlineSnapshot(`"<div @click="a(); b()" />"`)
     expect(
       await fixture(`<div @click="a(); () => {}; b()" />`),
-    ).toMatchInlineSnapshot(`
-      "<div @click="a();
-        () => {
-        };
-        b()" />"
-    `)
+    ).toMatchInlineSnapshot(`"<div @click="a(); () => {}; b()" />"`)
   })
 
   it('v-slot', async () => {
     expect(await fixture(`<Comp><template #header="{ name = 'hi' }">{{ name!.toString() }}</template></Comp>`))
-      .toMatchInlineSnapshot(`"<Comp><template #header="{ name = 'hi' }">{{ name.toString() }}</template></Comp>"`)
+      .toMatchInlineSnapshot(`"<Comp><template #header="{ name = 'hi' }">{{ name .toString() }}</template></Comp>"`)
   })
 
   it('destructuring', async () => {
     expect(
       await fixture(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`),
-    ).toEqual(`<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>`)
+    ).toMatchInlineSnapshot(`"<MyComponent v-slot="{ active, ...slotProps }">{{ active }}</MyComponent>"`)
 
     expect(
       await fixture(
@@ -94,64 +80,64 @@ describe('transform typescript template', () => {
   })
 
   it('compound expressions', async () => {
-    expect(await fixture(`<slot :name="(foo as string) + bar" />`)).toEqual(
-      `<slot :name="foo + bar" />`,
+    expect(await fixture(`<slot :name="(foo as string) + bar" />`)).toMatchInlineSnapshot(
+      `"<slot :name="(foo          ) + bar" />"`,
     )
   })
 
   it('custom directives', async () => {
     expect(
       await fixture(`<div v-highlight="(highlight as boolean)" />`),
-    ).toEqual(`<div v-highlight="highlight" />`)
+    ).toMatchInlineSnapshot(`"<div v-highlight="(highlight           )" />"`)
   })
 
   it('v-bind', async () => {
-    expect(await fixture(`<div v-bind="(props as any)" />`)).toEqual(
-      `<div v-bind="props" />`,
+    expect(await fixture(`<div v-bind="(props as any)" />`)).toMatchInlineSnapshot(
+      `"<div v-bind="(props       )" />"`,
     )
     expect(
       await fixture(`<div :key="(value as any)" data-test="test" />`),
-    ).toEqual(`<div :key="value" data-test="test" />`)
-    expect(await fixture(`<input disabled />`)).toEqual(`<input disabled />`)
-    expect(await fixture(`<input :disabled />`)).toEqual(
-      `<input :disabled />`,
+    ).toMatchInlineSnapshot(`"<div :key="(value       )" data-test="test" />"`)
+    expect(await fixture(`<input disabled />`)).toMatchInlineSnapshot(`"<input disabled />"`)
+    expect(await fixture(`<input :disabled />`)).toMatchInlineSnapshot(
+      `"<input :disabled />"`,
     )
-    expect(await fixture(`<input v-bind:disabled />`)).toEqual(
-      `<input v-bind:disabled />`,
+    expect(await fixture(`<input v-bind:disabled />`)).toMatchInlineSnapshot(
+      `"<input v-bind:disabled />"`,
     )
   })
 
   it('interpolation', async () => {
-    expect(await fixture(`<div>{{ data!.test }}</div>`)).toEqual(
-      `<div>{{ data.test }}</div>`,
+    expect(await fixture(`<div>{{ data!.test }}</div>`)).toMatchInlineSnapshot(
+      `"<div>{{ data .test }}</div>"`,
     )
-    expect(await fixture(`<div>hi {{ data!.test }}</div>`)).toEqual(
-      `<div>hi {{ data.test }}</div>`,
+    expect(await fixture(`<div>hi {{ data!.test }}</div>`)).toMatchInlineSnapshot(
+      `"<div>hi {{ data .test }}</div>"`,
     )
     expect(
       await fixture(
         `<div>{{ typeof data!.test === "string" ? data!.test : getKey(data!.test) }}</div>`,
       ),
-    ).toEqual(
-      `<div>{{ typeof data.test === "string" ? data.test : getKey(data.test) }}</div>`,
+    ).toMatchInlineSnapshot(
+      `"<div>{{ typeof data .test === "string" ? data .test : getKey(data .test) }}</div>"`,
     )
   })
 
   it('keep comments', async () => {
     expect(
       await fixture(`<div>{{ data!.test }}</div><!-- comment -->`),
-    ).toEqual(`<div>{{ data.test }}</div><!-- comment -->`)
+    ).toMatchInlineSnapshot(`"<div>{{ data .test }}</div><!-- comment -->"`)
   })
 
   it('keep text', async () => {
-    expect(await fixture(`<div>data!.test</div>`)).toEqual(
-      `<div>data!.test</div>`,
+    expect(await fixture(`<div>data!.test</div>`)).toMatchInlineSnapshot(
+      `"<div>data!.test</div>"`,
     )
   })
 
   it('keep empty', async () => {
-    expect(await fixture(`<div>{{}}</div>`)).toEqual(`<div>{{}}</div>`)
-    expect(await fixture(`<div @click="" />`)).toEqual(`<div @click="" />`)
+    expect(await fixture(`<div>{{}}</div>`)).toMatchInlineSnapshot(`"<div>{{}}</div>"`)
+    expect(await fixture(`<div @click="" />`)).toMatchInlineSnapshot(`"<div @click="" />"`)
   })
 
   it('throw error', async () => {
@@ -159,14 +145,14 @@ describe('transform typescript template', () => {
   })
 
   it('quotes', async () => {
-    expect(await fixture(`<div @click="emit('click')" />`)).toEqual(
-      `<div @click="emit('click')" />`,
+    expect(await fixture(`<div @click="emit('click')" />`)).toMatchInlineSnapshot(
+      `"<div @click="emit('click')" />"`,
     )
-    expect(await fixture(`<div @click='emit("click")' />`)).toEqual(
-      `<div @click='emit("click")' />`,
+    expect(await fixture(`<div @click='emit("click")' />`)).toMatchInlineSnapshot(
+      `"<div @click='emit("click")' />"`,
     )
-    expect(await fixture(`<div @click="emit('click', '\\'')" />`)).toEqual(
-      `<div @click="emit('click', '\\'')" />`,
+    expect(await fixture(`<div @click="emit('click', '\\'')" />`)).toMatchInlineSnapshot(
+      `"<div @click="emit('click', '\\'')" />"`,
     )
   })
 
@@ -181,9 +167,9 @@ describe('transform typescript template', () => {
     ).toMatchInlineSnapshot(`
       "
             <div>
-              <MyComponent #template="{ item, index, level = 0 }" />
-              <MyComponent #template="{ item, index, level = 0 }" />
-              <MyComponent #template="{ item, index = 3, level }" />
+              <MyComponent #template="{ item, index, level = 0          }" />
+              <MyComponent #template="{ item, index, level = 0          }" />
+              <MyComponent #template="{ item, index = 3         , level }" />
             </div>"
     `)
   })
@@ -191,13 +177,7 @@ describe('transform typescript template', () => {
   it('handles deeply nested templates', async () => {
     const nestedTemplate = `<div><span><p>{{ (data as any).value }}</p></span></div>`
     const result = await fixture(nestedTemplate)
-    expect(result).toEqual('<div><span><p>{{ data.value }}</p></span></div>')
-  })
-
-  it('replaces quotes correctly', () => {
-    const input = `\"test\"`
-    const output = replaceQuote(input, '\"', '\'')
-    expect(output).toBe(`'test'`)
+    expect(result).toMatchInlineSnapshot(`"<div><span><p>{{ (data       ).value }}</p></span></div>"`)
   })
 
   it('handles quotes in interpolations', async () => {
@@ -216,10 +196,10 @@ describe('transform typescript template', () => {
       "
               <template>
                 <div>
-                  <div :class="$test('foobar', \`Foobar \\'test\\'\`)" />
-                  <div>{{ $test("foobar", "Foobar 'test'") }}</div>
-                  <div>{{ $test("foobar", "Foobar test") }}</div>
-                  <div>{{ $test("foobar", \`Foobar ' " ''" test\`) }}</div>
+                  <div :class="$test('foobar', \`Foobar 'test'\`)" />
+                  <div>{{ $test('foobar', "Foobar 'test'") }}</div>
+                  <div>{{ $test('foobar', 'Foobar test') }}</div>
+                  <div>{{ $test('foobar', \`Foobar ' " ''" test\`) }}</div>
                 </div>
               </template>
               "
@@ -234,10 +214,6 @@ describe('transform typescript template', () => {
       src,
       parse(src, { parseMode: 'base' }),
       0,
-      async (code) => {
-        const res = await transform(code, { loader: 'ts', target: 'esnext' })
-        return res.code
-      },
     )
   }
 })

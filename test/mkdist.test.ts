@@ -19,8 +19,8 @@ describe('transform typescript script setup', () => {
     ).toMatchInlineSnapshot(`
       "<script setup>
       defineProps({
-        msg: { type: String, required: true }
-      });
+          msg: { type: String, required: true }
+        })
       </script>
       "
     `)
@@ -31,8 +31,8 @@ describe('transform typescript script setup', () => {
     ).toMatchInlineSnapshot(`
       "<script setup>
       const props = defineProps({
-        msg: { type: String, required: true }
-      });
+          msg: { type: String, required: true }
+        })
       </script>
       "
     `)
@@ -43,8 +43,8 @@ describe('transform typescript script setup', () => {
     ).toMatchInlineSnapshot(`
       "<script setup>
       const { msg } = defineProps({
-        msg: { type: String, required: true }
-      });
+          msg: { type: String, required: true }
+        })
       </script>
       "
     `)
@@ -54,9 +54,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const { msg = "hello" } = defineProps({
-        msg: { type: String, required: false }
-      });
+      const { msg = 'hello' } = defineProps({
+          msg: { type: String, required: false }
+        })
       </script>
       "
     `)
@@ -70,8 +70,8 @@ describe('transform typescript script setup', () => {
     ).toMatchInlineSnapshot(`
       "<script setup>
       const props = defineProps({
-        msg: { type: String, required: false, default: "hi" }
-      });
+          msg: { type: String, required: false, default: 'hi' }
+        })
       </script>
       "
     `)
@@ -82,8 +82,8 @@ describe('transform typescript script setup', () => {
     ).toMatchInlineSnapshot(`
       "<script setup>
       defineProps({
-        msg: { type: String, required: false, default: "hi" }
-      });
+          msg: { type: String, required: false, default: 'hi' }
+        })
       </script>
       "
     `)
@@ -96,7 +96,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const emit = defineEmits(["click"]);
+      const emit = defineEmits(["click"])
       </script>
       "
     `)
@@ -106,7 +106,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -116,7 +116,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -126,7 +126,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -136,7 +136,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -149,7 +149,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const model = defineModel({ type: String });
+      const model = defineModel({ type: String })
       </script>
       "
     `)
@@ -157,7 +157,7 @@ describe('transform typescript script setup', () => {
       await fixture(`<script setup lang="ts">defineModel<string>()</script>`),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel({ type: String });
+      defineModel({ type: String })
       </script>
       "
     `)
@@ -167,7 +167,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", { type: String });
+      defineModel("msg", { type: String })
       </script>
       "
     `)
@@ -177,7 +177,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel({ type: String, ...{ required: true } });
+      defineModel({ type: String, ...{ required: true } })
       </script>
       "
     `)
@@ -187,7 +187,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", { type: String, ...{ required: true } });
+      defineModel("msg", { type: String, ...{ required: true } })
       </script>
       "
     `)
@@ -210,8 +210,8 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script setup>
-      import { toValue } from "vue";
-      const msg = 1;
+                import { toValue,          } from 'vue'
+                const msg = 1
       </script>
       "
     `)
@@ -270,7 +270,7 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
 
       <style scoped>
@@ -314,7 +314,7 @@ describe('transform typescript script setup', () => {
       </style>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
 
       <template>
@@ -340,7 +340,7 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
       "
     `)
@@ -370,7 +370,7 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
       "
     `)

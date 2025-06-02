@@ -1,7 +1,7 @@
 import type { SFCBlock, SFCTemplateBlock } from 'vue/compiler-sfc'
 import type { InputFile, Loader, LoaderContext, LoaderResult, OutputFile } from '../types/mkdist'
 import process from 'node:process'
-import { transform } from 'esbuild'
+import { transpile } from '@teages/oxc-blank-space'
 import { preTranspileScriptSetup, transpileVueTemplate } from '../index'
 
 interface DefineVueLoaderOptions {
@@ -206,7 +206,7 @@ export function defineDefaultBlockLoader(options: DefaultBlockLoaderOptions): Vu
 
 const templateLoader: VueBlockLoader = async (
   rawBlock,
-  { requireTranspileTemplate, loadFile, rawInput },
+  { requireTranspileTemplate },
 ) => {
   if (rawBlock.type !== 'template') {
     return
@@ -223,16 +223,6 @@ const templateLoader: VueBlockLoader = async (
     block.content,
     block.ast!,
     block.loc.start.offset,
-    async (code) => {
-      const res = await loadFile({
-        getContents: () => code,
-        path: `${rawInput.path}.ts`,
-        srcPath: `${rawInput.srcPath}.ts`,
-        extension: '.ts',
-      })
-
-      return res?.find(f => (['.js', '.mjs', '.cjs'] as Array<string | undefined>).includes(f.extension))?.contents || code
-    },
   )
 
   return {
@@ -247,16 +237,12 @@ const styleLoader = defineDefaultBlockLoader({
   type: 'style',
 })
 
-const scriptLoader: VueBlockLoader = async (block, { options }) => {
+const scriptLoader: VueBlockLoader = async (block) => {
   if (block.type !== 'script') {
     return
   }
 
-  const { code: result } = await transform(block.content, {
-    ...options.esbuild,
-    loader: 'ts',
-    tsconfigRaw: { compilerOptions: { target: 'ESNext', verbatimModuleSyntax: true } },
-  })
+  const result = transpile(block.content)
 
   return {
     type: block.type,
