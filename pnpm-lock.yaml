@@ -18,9 +18,6 @@ importers:
       '@teages/oxc-blank-space':
         specifier: ^0.1.0
         version: 0.1.0(typescript@5.8.3)
-      oxidase:
-        specifier: ^0.0.3
-        version: 0.0.3
     devDependencies:
       '@antfu/eslint-config':
         specifier: 4.13.2
@@ -2732,10 +2729,6 @@ packages:
 
   oxc-resolver@9.0.2:
     resolution: {integrity: sha512-w838ygc1p7rF+7+h5vR9A+Y9Fc4imy6C3xPthCMkdFUgFvUWkmABeNB8RBDQ6+afk44Q60/UMMQ+gfDUW99fBA==}
-
-  oxidase@0.0.3:
-    resolution: {integrity: sha512-b34YuOWiiFRSj06jYmJHVAqR1cqnG+W4fR4D8lvCFVIFm7Ysrf0E6ZLbfe9nJselZT/qjem0YlKRWtw2EBaIZQ==}
-    engines: {node: '>=18.20'}
 
   p-limit@3.1.0:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
@@ -6436,8 +6429,6 @@ snapshots:
       '@oxc-resolver/binding-wasm32-wasi': 9.0.2
       '@oxc-resolver/binding-win32-arm64-msvc': 9.0.2
       '@oxc-resolver/binding-win32-x64-msvc': 9.0.2
-
-  oxidase@0.0.3: {}
 
   p-limit@3.1.0:
     dependencies:

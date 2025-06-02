@@ -50,8 +50,7 @@
   },
   "dependencies": {
     "@babel/parser": "^7.27.0",
-    "@teages/oxc-blank-space": "^0.1.0",
-    "oxidase": "^0.0.3"
+    "@teages/oxc-blank-space": "^0.1.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "4.13.2",
