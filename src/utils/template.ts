@@ -1,6 +1,6 @@
 import type { AttributeNode, DirectiveNode, ExpressionNode, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
+import { transpile } from '@teages/oxc-blank-space'
 import { isFnExpressionBrowser as isFnExpression, isMemberExpressionBrowser as isMemberExpression } from '@vue/compiler-core'
-import { transpile } from 'oxidase'
 
 // copy from `@vue/compiler-dom`
 enum NodeTypes {

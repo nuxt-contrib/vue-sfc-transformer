@@ -1,7 +1,7 @@
 import type { SFCBlock, SFCTemplateBlock } from 'vue/compiler-sfc'
 import type { InputFile, Loader, LoaderContext, LoaderResult, OutputFile } from '../types/mkdist'
 import process from 'node:process'
-import { transpile } from 'oxidase'
+import { transpile } from '@teages/oxc-blank-space'
 import { preTranspileScriptSetup, transpileVueTemplate } from '../index'
 
 interface DefineVueLoaderOptions {
