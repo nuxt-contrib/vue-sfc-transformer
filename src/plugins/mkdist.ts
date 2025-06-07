@@ -1,11 +1,11 @@
 import type { LoaderFile } from '../block-loader/types'
-import type { VueSFCTransformerFileLoader } from '../sfc-transormer'
+import type { VueSFCTransformerFileLoader } from '../sfc-transformer'
 import type { Loader } from '../types/mkdist'
 import { resolve } from 'node:path'
 import { scriptLoader } from '../block-loader/script'
 import { styleLoader } from '../block-loader/style'
 import { templateLoader } from '../block-loader/template'
-import { defineVueSFCTransformer } from '../sfc-transormer'
+import { defineVueSFCTransformer } from '../sfc-transformer'
 
 let cachedEsbuild: typeof import('esbuild') | undefined
 function importEsbuild(): Promise<typeof import('esbuild')> | typeof import('esbuild') {
