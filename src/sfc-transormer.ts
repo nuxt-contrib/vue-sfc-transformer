@@ -5,7 +5,7 @@ import { cleanupBreakLine } from './utils/string'
 
 export type VueSFCTransformerFileLoader = (input: LoaderFile, context: LoadFileContext) => Promise<LoaderFile[]> | LoaderFile[]
 
-export interface VueSFCTransformerContext {
+interface VueSFCTransformerContext {
   /**
    * Relative path to the SFC
    */
@@ -24,13 +24,13 @@ export interface VueSFCTransformerContext {
   loadFile: VueSFCTransformerFileLoader
 }
 
-export interface VueSFCTransformerOptions {
+interface VueSFCTransformerOptions {
   blockLoaders?: {
     [blockType: string]: BlockLoader | undefined
   }
 }
 
-export type VueSFCTransformer = (input: string, context: VueSFCTransformerContext) => Promise<string>
+type VueSFCTransformer = (input: string, context: VueSFCTransformerContext) => Promise<string>
 
 export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): VueSFCTransformer {
   const { blockLoaders = {} } = options || {}

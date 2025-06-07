@@ -39,7 +39,7 @@ export interface BlockLoaderContext {
   loadFile: (input: LoaderFile, context: LoadFileContext) => Promise<LoaderFile[]> | LoaderFile[]
 }
 
-export type BlockLoaderOutput = Pick<SFCBlock, 'type' | 'content' | 'attrs'>
+type BlockLoaderOutput = Pick<SFCBlock, 'type' | 'content' | 'attrs'>
 
 export interface BlockLoader {
   (

@@ -1,7 +1,7 @@
 import type { BlockLoader, LoaderFile, LoadFileContext } from './types'
 import { toOmit } from '../utils/object'
 
-export interface DefaultBlockLoaderOptions {
+interface DefaultBlockLoaderOptions {
   type: 'script' | 'style' | 'template' | (string & {})
   defaultLang: string
   validExtensions?: string[]
