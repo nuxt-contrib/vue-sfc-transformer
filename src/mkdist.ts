@@ -1,1 +1,1 @@
-export { vueLoader } from './utils/mkdist'
+export { vueLoader } from './plugins/mkdist'

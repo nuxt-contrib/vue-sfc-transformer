@@ -1,5 +1,6 @@
 import type { AttributeNode, DirectiveNode, ExpressionNode, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
 import { isFnExpressionBrowser as isFnExpression, isMemberExpressionBrowser as isMemberExpression } from '@vue/compiler-core'
+import { MagicString } from 'vue/compiler-sfc'
 
 // copy from `@vue/compiler-dom`
 enum NodeTypes {
@@ -144,7 +145,6 @@ export async function transpileVueTemplate(
   offset = 0,
   transform: (code: string) => Promise<string>,
 ): Promise<string> {
-  const { MagicString } = await import('vue/compiler-sfc')
   const expressions: Expression[] = []
 
   handleNode(root, (...items) => expressions.push(...items), [])

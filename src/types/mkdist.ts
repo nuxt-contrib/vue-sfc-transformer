@@ -2,14 +2,14 @@
 
 import type { MkdistOptions } from 'mkdist'
 
-export interface InputFile {
+interface InputFile {
   path: string
   extension: string
   srcPath?: string
   getContents: () => Promise<string> | string
 }
 
-export interface OutputFile {
+interface OutputFile {
   /**
    * relative to distDir
    */
@@ -23,9 +23,9 @@ export interface OutputFile {
   skip?: boolean
 }
 
-export type LoaderResult = OutputFile[] | undefined
+type LoaderResult = OutputFile[] | undefined
 
-export interface LoaderContext {
+interface LoaderContext {
   loadFile: (input: InputFile) => LoaderResult | Promise<LoaderResult>
   options: MkdistOptions
 }

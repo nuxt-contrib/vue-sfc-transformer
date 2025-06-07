@@ -2,15 +2,10 @@ import type { ArrayExpression, CallExpression, Expression, Identifier, Node, Obj
 import type { SFCDescriptor, SFCScriptBlock, SimpleTypeResolveContext } from 'vue/compiler-sfc'
 
 import { parse } from '@babel/parser'
+import { extractRuntimeEmits, extractRuntimeProps, inferRuntimeType, MagicString } from 'vue/compiler-sfc'
 
 interface Context {
   ctx: SimpleTypeResolveContext
-  utils: {
-    extractRuntimeProps: typeof import('vue/compiler-sfc').extractRuntimeProps
-    extractRuntimeEmits: typeof import('vue/compiler-sfc').extractRuntimeEmits
-    inferRuntimeType: typeof import('vue/compiler-sfc').inferRuntimeType
-    MagicString: typeof import('vue/compiler-sfc').MagicString
-  }
 }
 
 const DEFINE_EMITS = 'defineEmits'
@@ -27,7 +22,7 @@ export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string): P
     throw new Error('[vue-sfc-transformer] No script setup block found')
   }
   const context = await prepareContext(sfc as SFCDescriptor & { scriptSetup: SFCScriptBlock }, id)
-  const resultBuilder = new context.utils.MagicString(sfc.scriptSetup.content)
+  const resultBuilder = new MagicString(sfc.scriptSetup.content)
 
   for (const node of context.ctx.ast) {
     if (node.type === 'ExpressionStatement') {
@@ -95,7 +90,7 @@ function processDefineProps(node: Expression, context: Context): string | undefi
   }
 
   context.ctx.propsTypeDecl = propsTypeDecl
-  const propsStr = context.utils.extractRuntimeProps(context.ctx) || '{}'
+  const propsStr = extractRuntimeProps(context.ctx) || '{}'
 
   return `${DEFINE_PROPS}(${propsStr})`
 }
@@ -122,7 +117,7 @@ function processDefineEmits(node: Expression, context: Context): string | undefi
   }
 
   context.ctx.emitsTypeDecl = emitsTypeDecl
-  const emits = context.utils.extractRuntimeEmits(context.ctx)
+  const emits = extractRuntimeEmits(context.ctx)
 
   return `defineEmits([${[...emits].map(emit => `"${emit}"`).join(', ')}])`
 }
@@ -171,7 +166,7 @@ function processDefineModel(node: Expression, context: Context): string | undefi
     return
   }
 
-  let model = context.utils.inferRuntimeType(context.ctx, modelTypeDecl)
+  let model = inferRuntimeType(context.ctx, modelTypeDecl)
   let skipCheck = false
   const hasBoolean = model.includes('Boolean')
   const hasFunction = model.includes('Function')
@@ -250,8 +245,6 @@ function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [Str
 }
 
 async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string): Promise<Context> {
-  const { extractRuntimeProps, extractRuntimeEmits, inferRuntimeType, MagicString } = await import('vue/compiler-sfc')
-
   const helper = new Set<string>()
   const ast = parse(`${scriptSetup.content}\n${script?.content}`, {
     sourceType: 'module',
@@ -284,12 +277,6 @@ async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptS
 
   return {
     ctx,
-    utils: {
-      MagicString,
-      extractRuntimeProps,
-      extractRuntimeEmits,
-      inferRuntimeType,
-    },
   }
 }
 
