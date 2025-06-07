@@ -1,5 +1,6 @@
 import type { SFCBlock } from 'vue/compiler-sfc'
 import type { BlockLoader, BlockLoaderContext, LoaderFile, LoadFileContext } from './block-loader/types'
+import { parse } from 'vue/compiler-sfc'
 import { preTranspileScriptSetup } from './utils/script-setup'
 import { cleanupBreakLine } from './utils/string'
 
@@ -36,8 +37,6 @@ export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): Vue
   const { blockLoaders = {} } = options || {}
 
   return async (input, { path, srcPath, loadFile, verifySFC }) => {
-    const { parse } = await import('vue/compiler-sfc')
-
     let modified = false
 
     const sfc = parse(input, { filename: srcPath, ignoreEmpty: true })
@@ -116,7 +115,6 @@ export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): Vue
     // eslint-disable-next-line node/prefer-global/process
     if (verifySFC || process.env.VERIFY_VUE_FILES) {
       // verify the output
-      const { parse } = await import('vue/compiler-sfc')
       const { errors } = parse(contents, {
         filename: srcPath,
         ignoreEmpty: true,

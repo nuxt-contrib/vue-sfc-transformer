@@ -7,6 +7,18 @@ import { styleLoader } from '../block-loader/style'
 import { templateLoader } from '../block-loader/template'
 import { defineVueSFCTransformer } from '../sfc-transormer'
 
+let cachedEsbuild: typeof import('esbuild') | undefined
+function importEsbuild(): Promise<typeof import('esbuild')> | typeof import('esbuild') {
+  if (cachedEsbuild) {
+    return cachedEsbuild
+  }
+  return (async () => {
+    const esbuild = await import('esbuild')
+    cachedEsbuild = esbuild
+    return esbuild
+  })()
+}
+
 const vueSFCTransformer = defineVueSFCTransformer({
   blockLoaders: {
     template: templateLoader,
@@ -20,7 +32,7 @@ export const vueLoader: Loader = async (input, mkdistContext) => {
     return
   }
 
-  const { transform } = await import('esbuild')
+  const { transform } = await importEsbuild()
   const path = input.path
   const srcPath = input.srcPath || resolve(input.path)
 
