@@ -3,8 +3,9 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { mkdist } from 'mkdist'
 import { afterAll, describe, expect, it, vi } from 'vitest'
+import { defineDefaultBlockLoader } from '../src/block-loader/default'
 import { vueLoader } from '../src/mkdist'
-import { cleanupBreakLine, defineDefaultBlockLoader } from '../src/utils/mkdist'
+import { cleanupBreakLine } from '../src/utils/string'
 
 describe('transform typescript script setup', () => {
   const tmpDir = fileURLToPath(new URL('../node_modules/.tmp/fixtures', import.meta.url))
