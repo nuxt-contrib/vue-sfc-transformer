@@ -46,12 +46,12 @@ interface Expression {
   replacement?: string
 }
 
-type VueTemplateNode =
-  | ParentNode
-  | ExpressionNode
-  | TemplateChildNode
-  | AttributeNode
-  | DirectiveNode
+type VueTemplateNode
+  = | ParentNode
+    | ExpressionNode
+    | TemplateChildNode
+    | AttributeNode
+    | DirectiveNode
 
 function handleNode(
   node: VueTemplateNode | undefined,
