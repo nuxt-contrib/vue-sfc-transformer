@@ -73,7 +73,7 @@
     "unbuild": "3.5.0",
     "vitest": "3.2.4",
     "vue": "3.5.17",
-    "vue-tsc": "2.2.12"
+    "vue-tsc": "3.0.1"
   },
   "resolutions": {
     "@vue/compiler-core": "3.5.17",
