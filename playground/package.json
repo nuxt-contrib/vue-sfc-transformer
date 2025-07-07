@@ -9,6 +9,6 @@
   },
   "devDependencies": {
     "@vue/compiler-sfc": "3.5.17",
-    "esbuild": "0.25.5"
+    "esbuild": "0.25.6"
   }
 }
