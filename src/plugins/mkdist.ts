@@ -77,6 +77,15 @@ export const vueLoader: Loader = async (input, mkdistContext) => {
     extension: '.js',
     getContents: () => 'export default {}',
   }))?.filter(f => f.declaration) || []
+  if (dts.length) {
+    dts.push({
+      contents: await input.getContents(),
+      path: input.path,
+      srcPath: input.srcPath,
+      extension: '.d.vue.ts',
+      declaration: true,
+    })
+  }
 
   return [
     {
