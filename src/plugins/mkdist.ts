@@ -71,22 +71,21 @@ export const vueLoader: Loader = async (input, mkdistContext) => {
   })
 
   // generate dts
-  const dts = [
-    {
-      contents: 'export default {}',
-      path: `${input.path}.js`,
-      srcPath: `${input.srcPath}.js`,
-      extension: '.d.ts',
-      declaration: true,
-    },
-    {
+  const dts = (await mkdistContext.loadFile({
+    path: `${input.path}.js`,
+    srcPath: `${input.srcPath}.js`,
+    extension: '.js',
+    getContents: () => 'export default {}',
+  }))?.filter(f => f.declaration) || []
+  if (dts.length) {
+    dts.push({
       contents: await input.getContents(),
       path: input.path,
       srcPath: input.srcPath,
       extension: '.d.vue.ts',
       declaration: true,
-    },
-  ]
+    })
+  }
 
   return [
     {
