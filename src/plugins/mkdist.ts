@@ -1,6 +1,8 @@
 import type { LoaderFile } from '../block-loader/types'
 import type { VueSFCTransformerFileLoader } from '../sfc-transformer'
 import type { Loader } from '../types/mkdist'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { scriptLoader } from '../block-loader/script'
 import { styleLoader } from '../block-loader/style'
@@ -17,6 +19,27 @@ function importEsbuild(): Promise<typeof import('esbuild')> | typeof import('esb
     cachedEsbuild = esbuild
     return esbuild
   })()
+}
+
+let _isMkdistSupportDualVueDts: boolean | undefined
+function isMkdistSupportDualVueDts(): boolean {
+  if (typeof _isMkdistSupportDualVueDts === 'boolean') {
+    return _isMkdistSupportDualVueDts
+  }
+  try {
+    const require = createRequire(import.meta.url)
+    const mkdistPath = require.resolve('mkdist')
+    const packageJson = readFileSync(resolve(mkdistPath, '..', '..', 'package.json'), 'utf-8')
+    const { version = '0.0.0' } = JSON.parse(packageJson) as { version: string }
+    const [major = 0, minor = 0, patch = 0] = version.split('.').map(n => Number.parseInt(n))
+    const normalizedVersion = major * 1_000_000 + minor * 1_000 + patch
+
+    return !Number.isNaN(normalizedVersion) && normalizedVersion > 2_003_000
+  }
+  catch (error) {
+    console.error(`Error checking mkdist version: ${error}`)
+    return false
+  }
 }
 
 const vueSFCTransformer = defineVueSFCTransformer({
@@ -77,7 +100,7 @@ export const vueLoader: Loader = async (input, mkdistContext) => {
     extension: '.js',
     getContents: () => 'export default {}',
   }))?.filter(f => f.declaration) || []
-  if (dts.length) {
+  if (dts.length && isMkdistSupportDualVueDts()) {
     dts.push({
       contents: await input.getContents(),
       path: input.path,
