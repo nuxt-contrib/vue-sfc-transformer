@@ -52,31 +52,31 @@
     "@babel/parser": "^7.27.0"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "4.16.2",
-    "@babel/types": "7.28.1",
-    "@types/node": "22.16.3",
+    "@antfu/eslint-config": "4.19.0",
+    "@babel/types": "7.28.2",
+    "@types/node": "22.16.5",
     "@vitest/coverage-v8": "3.2.4",
-    "@vue/compiler-core": "3.5.17",
-    "@vue/compiler-dom": "3.5.17",
+    "@vue/compiler-core": "3.5.18",
+    "@vue/compiler-dom": "3.5.18",
     "bumpp": "10.2.0",
     "changelogithub": "13.16.0",
-    "esbuild": "0.25.6",
+    "esbuild": "0.25.8",
     "eslint": "9.31.0",
     "exsolve": "1.0.7",
     "installed-check": "9.3.0",
-    "knip": "5.61.3",
+    "knip": "5.62.0",
     "lint-staged": "16.1.2",
     "mkdist": "2.3.0",
     "pkg-pr-new": "0.0.54",
     "simple-git-hooks": "2.13.0",
     "typescript": "5.8.3",
-    "unbuild": "3.5.0",
+    "unbuild": "3.6.0",
     "vitest": "3.2.4",
     "vue": "3.5.18",
-    "vue-tsc": "3.0.1"
+    "vue-tsc": "3.0.4"
   },
   "resolutions": {
-    "@vue/compiler-core": "3.5.17",
+    "@vue/compiler-core": "3.5.18",
     "vue-sfc-transformer": "link:."
   },
   "simple-git-hooks": {

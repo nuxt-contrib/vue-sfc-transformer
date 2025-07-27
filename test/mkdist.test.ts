@@ -237,7 +237,7 @@ describe('transform typescript script setup', () => {
     expect(await declaration(src)).toMatchInlineSnapshot(`
       "declare const _default: import("vue").DefineComponent<{
           msg: string;
-      }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
+      }, void, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
           msg: string;
       }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
       export default _default;
@@ -246,7 +246,7 @@ describe('transform typescript script setup', () => {
 
     expect(await fixture(`<template><div /></template>`)).toMatchInlineSnapshot(`"<template><div /></template>"`)
     expect(await declaration(`<template><div /></template>`)).toMatchInlineSnapshot(`
-      "declare const _default: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+      "declare const _default: import("vue").DefineComponent<{}, void, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
       export default _default;
       "
     `)
