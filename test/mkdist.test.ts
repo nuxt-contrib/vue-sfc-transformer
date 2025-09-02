@@ -234,6 +234,15 @@ describe('transform typescript script setup', () => {
       const msg = 1
       </script>`
 
+    expect(await legacyDeclaration(src)).toMatchInlineSnapshot(`
+      "declare const _default: import("vue").DefineComponent<{
+          msg: string;
+      }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
+          msg: string;
+      }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+      export default _default;
+      "
+    `)
     expect(await declaration(src)).toMatchInlineSnapshot(`
       "declare const _default: import("vue").DefineComponent<{
           msg: string;
@@ -245,6 +254,11 @@ describe('transform typescript script setup', () => {
     `)
 
     expect(await fixture(`<template><div /></template>`)).toMatchInlineSnapshot(`"<template><div /></template>"`)
+    expect(await legacyDeclaration(`<template><div /></template>`)).toMatchInlineSnapshot(`
+      "declare const _default: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+      export default _default;
+      "
+    `)
     expect(await declaration(`<template><div /></template>`)).toMatchInlineSnapshot(`
       "declare const _default: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
       export default _default;
@@ -424,11 +438,18 @@ describe('transform typescript script setup', () => {
     return await readFile(join(tmpDir, 'dist/index.vue'), 'utf-8')
   }
 
-  async function declaration(src: string): Promise<string | undefined> {
+  async function legacyDeclaration(src: string): Promise<string | undefined> {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
     await writeFile(join(tmpDir, 'src/index.vue'), src)
     await mkdist({ declaration: true, loaders: ['js', vueLoader], rootDir: tmpDir })
     return await readFile(join(tmpDir, 'dist/index.vue.d.ts'), 'utf-8').catch(() => undefined)
+  }
+  async function declaration(src: string): Promise<string | undefined> {
+    await rm(tmpDir, { force: true, recursive: true })
+    await mkdir(join(tmpDir, 'src'), { recursive: true })
+    await writeFile(join(tmpDir, 'src/index.vue'), src)
+    await mkdist({ declaration: true, loaders: ['js', vueLoader], rootDir: tmpDir })
+    return await readFile(join(tmpDir, 'dist/index.d.vue.ts'), 'utf-8').catch(() => undefined)
   }
 })
