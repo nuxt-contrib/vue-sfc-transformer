@@ -3,7 +3,7 @@ import type { VueSFCTransformerFileLoader } from '../sfc-transformer'
 import type { Loader } from '../types/mkdist'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { scriptLoader } from '../block-loader/script'
 import { styleLoader } from '../block-loader/style'
 import { templateLoader } from '../block-loader/template'
@@ -28,8 +28,10 @@ function isMkdistSupportDualVueDts(): boolean {
   }
   try {
     const require = createRequire(import.meta.url)
-    const mkdistPath = require.resolve('mkdist')
-    const packageJson = readFileSync(resolve(mkdistPath, '..', '..', 'package.json'), 'utf-8')
+    const mkdistPath = require.resolve('mkdist').replace(/\\/g, '/')
+    const lastNodeModules = mkdistPath.lastIndexOf('/mkdist/')
+    const withoutDist = lastNodeModules !== -1 ? mkdistPath.slice(0, lastNodeModules) : mkdistPath
+    const packageJson = readFileSync(join(withoutDist, 'mkdist/package.json'), 'utf-8')
     const { version = '0.0.0' } = JSON.parse(packageJson) as { version: string }
     const [major = 0, minor = 0, patch = 0] = version.split('.').map(n => Number.parseInt(n))
     const normalizedVersion = major * 1_000_000 + minor * 1_000 + patch
