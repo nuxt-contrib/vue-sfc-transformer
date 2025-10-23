@@ -235,32 +235,36 @@ describe('transform typescript script setup', () => {
       </script>`
 
     expect(await legacyDeclaration(src)).toMatchInlineSnapshot(`
-      "declare const _default: import("vue").DefineComponent<{
+      "declare const __VLS_export: import("vue").DefineComponent<{
           msg: string;
       }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
           msg: string;
       }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+      declare const _default: typeof __VLS_export;
       export default _default;
       "
     `)
     expect(await declaration(src)).toMatchInlineSnapshot(`
-      "declare const _default: import("vue").DefineComponent<{
+      "declare const __VLS_export: import("vue").DefineComponent<{
           msg: string;
       }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
           msg: string;
       }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+      declare const _default: typeof __VLS_export;
       export default _default;
       "
     `)
 
     expect(await fixture(`<template><div /></template>`)).toMatchInlineSnapshot(`"<template><div /></template>"`)
     expect(await legacyDeclaration(`<template><div /></template>`)).toMatchInlineSnapshot(`
-      "declare const _default: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+      "declare const __VLS_export: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+      declare const _default: typeof __VLS_export;
       export default _default;
       "
     `)
     expect(await declaration(`<template><div /></template>`)).toMatchInlineSnapshot(`
-      "declare const _default: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+      "declare const __VLS_export: import("vue").DefineComponent<{}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+      declare const _default: typeof __VLS_export;
       export default _default;
       "
     `)
