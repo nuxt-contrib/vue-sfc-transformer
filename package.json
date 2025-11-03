@@ -54,7 +54,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "6.1.0",
     "@babel/types": "7.28.5",
-    "@types/node": "22.18.12",
+    "@types/node": "24.10.0",
     "@vitest/coverage-v8": "4.0.4",
     "@vue/compiler-core": "3.5.22",
     "@vue/compiler-dom": "3.5.22",
