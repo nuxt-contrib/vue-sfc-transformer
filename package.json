@@ -55,7 +55,7 @@
     "@antfu/eslint-config": "6.2.0",
     "@babel/types": "7.28.5",
     "@types/node": "24.10.0",
-    "@vitest/coverage-v8": "4.0.6",
+    "@vitest/coverage-v8": "4.0.8",
     "@vue/compiler-core": "3.5.22",
     "@vue/compiler-dom": "3.5.22",
     "bumpp": "10.3.1",
@@ -71,7 +71,7 @@
     "simple-git-hooks": "2.13.1",
     "typescript": "5.9.3",
     "unbuild": "3.6.1",
-    "vitest": "4.0.6",
+    "vitest": "4.0.8",
     "vue": "3.5.24",
     "vue-tsc": "3.1.3"
   },
