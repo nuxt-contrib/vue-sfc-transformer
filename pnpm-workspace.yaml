@@ -8,3 +8,4 @@ onlyBuiltDependencies:
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - chokidar@4.0.3
+  - '@octokit/plugin-paginate-rest@9.2.2'
