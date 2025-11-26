@@ -7,5 +7,8 @@ onlyBuiltDependencies:
   - simple-git-hooks
 trustPolicy: no-downgrade
 trustPolicyExclude:
-  - chokidar@4.0.3
+  - '@octokit/action@6.1.0'
+  - '@octokit/endpoint@9.0.6'
   - '@octokit/plugin-paginate-rest@9.2.2'
+  - chokidar@4.0.3
+  - undici@5.29.0 || 6.22.0
