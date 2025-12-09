@@ -4,6 +4,77 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  dev:
+    '@antfu/eslint-config':
+      specifier: 6.2.0
+      version: 6.2.0
+    '@babel/types':
+      specifier: 7.28.5
+      version: 7.28.5
+    '@types/node':
+      specifier: 24.10.1
+      version: 24.10.1
+    '@vitest/coverage-v8':
+      specifier: 4.0.14
+      version: 4.0.14
+    '@vue/compiler-dom':
+      specifier: 3.5.25
+      version: 3.5.25
+    bumpp:
+      specifier: 10.3.2
+      version: 10.3.2
+    changelogithub:
+      specifier: 14.0.0
+      version: 14.0.0
+    eslint:
+      specifier: 9.39.1
+      version: 9.39.1
+    exsolve:
+      specifier: 1.0.8
+      version: 1.0.8
+    installed-check:
+      specifier: 9.3.0
+      version: 9.3.0
+    knip:
+      specifier: 5.71.0
+      version: 5.71.0
+    lint-staged:
+      specifier: 16.2.7
+      version: 16.2.7
+    mkdist:
+      specifier: 2.4.1
+      version: 2.4.1
+    pkg-pr-new:
+      specifier: 0.0.62
+      version: 0.0.62
+    simple-git-hooks:
+      specifier: 2.13.1
+      version: 2.13.1
+    typescript:
+      specifier: 5.9.3
+      version: 5.9.3
+    unbuild:
+      specifier: 3.6.1
+      version: 3.6.1
+    vitest:
+      specifier: 4.0.14
+      version: 4.0.14
+    vue-tsc:
+      specifier: 3.1.5
+      version: 3.1.5
+  peer:
+    esbuild:
+      specifier: 0.27.0
+      version: 0.27.0
+    vue:
+      specifier: 3.5.25
+      version: 3.5.25
+  prod:
+    '@babel/parser':
+      specifier: ^7.27.0
+      version: 7.28.5
+
 overrides:
   '@vue/compiler-core': 3.5.25
   vue-sfc-transformer: link:.
@@ -13,74 +84,74 @@ importers:
   .:
     dependencies:
       '@babel/parser':
-        specifier: ^7.27.0
+        specifier: catalog:prod
         version: 7.28.5
     devDependencies:
       '@antfu/eslint-config':
-        specifier: 6.2.0
+        specifier: catalog:dev
         version: 6.2.0(@vue/compiler-sfc@3.5.25)(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)(vitest@4.0.14(@types/node@24.10.1)(jiti@2.6.1)(yaml@2.8.1))
       '@babel/types':
-        specifier: 7.28.5
+        specifier: catalog:dev
         version: 7.28.5
       '@types/node':
-        specifier: 24.10.1
+        specifier: catalog:dev
         version: 24.10.1
       '@vitest/coverage-v8':
-        specifier: 4.0.14
+        specifier: catalog:dev
         version: 4.0.14(vitest@4.0.14(@types/node@24.10.1)(jiti@2.6.1)(yaml@2.8.1))
       '@vue/compiler-core':
         specifier: 3.5.25
         version: 3.5.25
       '@vue/compiler-dom':
-        specifier: 3.5.25
+        specifier: catalog:dev
         version: 3.5.25
       bumpp:
-        specifier: 10.3.2
+        specifier: catalog:dev
         version: 10.3.2(magicast@0.3.5)
       changelogithub:
-        specifier: 14.0.0
+        specifier: catalog:dev
         version: 14.0.0(magicast@0.3.5)
       esbuild:
-        specifier: 0.27.0
+        specifier: catalog:peer
         version: 0.27.0
       eslint:
-        specifier: 9.39.1
+        specifier: catalog:dev
         version: 9.39.1(jiti@2.6.1)
       exsolve:
-        specifier: 1.0.8
+        specifier: catalog:dev
         version: 1.0.8
       installed-check:
-        specifier: 9.3.0
+        specifier: catalog:dev
         version: 9.3.0
       knip:
-        specifier: 5.71.0
+        specifier: catalog:dev
         version: 5.71.0(@types/node@24.10.1)(typescript@5.9.3)
       lint-staged:
-        specifier: 16.2.7
+        specifier: catalog:dev
         version: 16.2.7
       mkdist:
-        specifier: 2.4.1
+        specifier: catalog:dev
         version: 2.4.1(typescript@5.9.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.25)(esbuild@0.27.0)(vue@3.5.25(typescript@5.9.3)))(vue-tsc@3.1.5(typescript@5.9.3))(vue@3.5.25(typescript@5.9.3))
       pkg-pr-new:
-        specifier: 0.0.62
+        specifier: catalog:dev
         version: 0.0.62
       simple-git-hooks:
-        specifier: 2.13.1
+        specifier: catalog:dev
         version: 2.13.1
       typescript:
-        specifier: 5.9.3
+        specifier: catalog:dev
         version: 5.9.3
       unbuild:
-        specifier: 3.6.1
+        specifier: catalog:dev
         version: 3.6.1(typescript@5.9.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.25)(esbuild@0.27.0)(vue@3.5.25(typescript@5.9.3)))(vue-tsc@3.1.5(typescript@5.9.3))(vue@3.5.25(typescript@5.9.3))
       vitest:
-        specifier: 4.0.14
+        specifier: catalog:dev
         version: 4.0.14(@types/node@24.10.1)(jiti@2.6.1)(yaml@2.8.1)
       vue:
-        specifier: 3.5.25
+        specifier: catalog:peer
         version: 3.5.25(typescript@5.9.3)
       vue-tsc:
-        specifier: 3.1.5
+        specifier: catalog:dev
         version: 3.1.5(typescript@5.9.3)
 
   playground:
@@ -174,10 +245,6 @@ packages:
 
   '@babel/helper-string-parser@7.27.1':
     resolution: {integrity: sha512-qMlSxKbpRlAridDExk92nSobyDdpPijUq2DW6oDnUqd0iOGxmQjyqhMIihI9+zv4LPyZdRje2cavWPbCbWm3eA==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/helper-validator-identifier@7.27.1':
-    resolution: {integrity: sha512-D2hP9eA+Sqx1kBZgzxZh0y1trbuU+JoDkiEwqhQ36nodYqJwyEIhPSdMNd7lOm/4io72luTPWH20Yda0xOuUow==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-validator-identifier@7.28.5':
@@ -2205,10 +2272,6 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
-  js-yaml@4.1.0:
-    resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
-    hasBin: true
-
   js-yaml@4.1.1:
     resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
     hasBin: true
@@ -2314,9 +2377,6 @@ packages:
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
-
-  magic-string@0.30.19:
-    resolution: {integrity: sha512-2N21sPY9Ws53PZvsEpVtNuSW+ScYbQdp4b9qUaL+9QkHUrGFKo56Lg9Emg5s9V/qrtNBmiR01sYhUOwu3H+VOw==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -2642,9 +2702,6 @@ packages:
 
   package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
-
-  package-manager-detector@1.4.0:
-    resolution: {integrity: sha512-rRZ+pR1Usc+ND9M2NkmCvE/LYJS+8ORVV9X0KuNSY/gFsp7RBHJM/ADh9LYq4Vvfq6QkKrW6/weuh8SMEtN5gw==}
 
   package-manager-detector@1.6.0:
     resolution: {integrity: sha512-61A5ThoTiDG/C8s8UMZwSorAGwMJ0ERVGj2OjoW5pAalsNOg15+iQiPzrLJ4jhZ1HJzmC2PIHT2oEiH3R5fzNA==}
@@ -3207,9 +3264,6 @@ packages:
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
 
-  tinyexec@1.0.1:
-    resolution: {integrity: sha512-5uC6DDlmeqiOwCPmK9jMSdOuZTh8bU39Ys6yidB+UTt5hfZUPGAypSgFRiEp+jbi9qH40BLDvy85jIU88wKSqw==}
-
   tinyexec@1.0.2:
     resolution: {integrity: sha512-W/KYk+NFhkmsYpuHq5JykngiOCnxeVL8v8dFnqxSD8qEEdRfXk1SDM6JzNqcERbcGYj9tMrDQBYV9cjgnunFIg==}
     engines: {node: '>=18'}
@@ -3591,18 +3645,16 @@ snapshots:
 
   '@antfu/install-pkg@1.1.0':
     dependencies:
-      package-manager-detector: 1.4.0
+      package-manager-detector: 1.6.0
       tinyexec: 1.0.2
 
   '@babel/code-frame@7.27.1':
     dependencies:
-      '@babel/helper-validator-identifier': 7.27.1
+      '@babel/helper-validator-identifier': 7.28.5
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
   '@babel/helper-string-parser@7.27.1': {}
-
-  '@babel/helper-validator-identifier@7.27.1': {}
 
   '@babel/helper-validator-identifier@7.28.5': {}
 
@@ -3865,7 +3917,7 @@ snapshots:
       globals: 14.0.0
       ignore: 5.3.2
       import-fresh: 3.3.1
-      js-yaml: 4.1.0
+      js-yaml: 4.1.1
       minimatch: 3.1.2
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -5621,10 +5673,6 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  js-yaml@4.1.0:
-    dependencies:
-      argparse: 2.0.1
-
   js-yaml@4.1.1:
     dependencies:
       argparse: 2.0.1
@@ -5739,10 +5787,6 @@ snapshots:
   longest-streak@3.1.0: {}
 
   lru-cache@10.4.3: {}
-
-  magic-string@0.30.19:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
 
   magic-string@0.30.21:
     dependencies:
@@ -6200,7 +6244,7 @@ snapshots:
       consola: 3.4.2
       pathe: 2.0.3
       pkg-types: 2.3.0
-      tinyexec: 1.0.1
+      tinyexec: 1.0.2
 
   object-deep-merge@2.0.0: {}
 
@@ -6271,8 +6315,6 @@ snapshots:
       p-limit: 3.1.0
 
   package-json-from-dist@1.0.1: {}
-
-  package-manager-detector@1.4.0: {}
 
   package-manager-detector@1.6.0: {}
 
@@ -6818,8 +6860,6 @@ snapshots:
 
   tinyexec@0.3.2: {}
 
-  tinyexec@1.0.1: {}
-
   tinyexec@1.0.2: {}
 
   tinyglobby@0.2.15:
@@ -6883,7 +6923,7 @@ snapshots:
       fix-dts-default-cjs-exports: 1.0.1
       hookable: 5.5.3
       jiti: 2.6.1
-      magic-string: 0.30.19
+      magic-string: 0.30.21
       mkdist: 2.4.1(typescript@5.9.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.25)(esbuild@0.27.0)(vue@3.5.25(typescript@5.9.3)))(vue-tsc@3.1.5(typescript@5.9.3))(vue@3.5.25(typescript@5.9.3))
       mlly: 1.8.0
       pathe: 2.0.3
