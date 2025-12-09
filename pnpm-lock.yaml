@@ -21,6 +21,9 @@ catalogs:
     '@vue/compiler-dom':
       specifier: 3.5.25
       version: 3.5.25
+    '@vue/compiler-sfc':
+      specifier: 3.5.25
+      version: 3.5.25
     bumpp:
       specifier: 10.3.2
       version: 10.3.2
@@ -161,10 +164,10 @@ importers:
         version: link:..
     devDependencies:
       '@vue/compiler-sfc':
-        specifier: 3.5.25
+        specifier: catalog:dev
         version: 3.5.25
       esbuild:
-        specifier: 0.27.1
+        specifier: catalog:peer
         version: 0.27.1
 
 packages:

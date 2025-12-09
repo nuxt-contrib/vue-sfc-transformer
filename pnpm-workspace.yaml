@@ -1,3 +1,12 @@
+catalogMode: prefer
+shellEmulator: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - '@octokit/action@6.1.0'
+  - '@octokit/endpoint@9.0.6'
+  - '@octokit/plugin-paginate-rest@9.2.2'
+  - chokidar@4.0.3
+  - undici@5.29.0 || 6.22.0
 packages:
   - playground
 catalogs:
@@ -7,6 +16,7 @@ catalogs:
     '@types/node': 24.10.2
     '@vitest/coverage-v8': 4.0.14
     '@vue/compiler-dom': 3.5.25
+    '@vue/compiler-sfc': 3.5.25
     bumpp: 10.3.2
     changelogithub: 14.0.0
     eslint: 9.39.1
@@ -32,10 +42,3 @@ ignoredBuiltDependencies:
   - esbuild
 onlyBuiltDependencies:
   - simple-git-hooks
-trustPolicy: no-downgrade
-trustPolicyExclude:
-  - '@octokit/action@6.1.0'
-  - '@octokit/endpoint@9.0.6'
-  - '@octokit/plugin-paginate-rest@9.2.2'
-  - chokidar@4.0.3
-  - undici@5.29.0 || 6.22.0
