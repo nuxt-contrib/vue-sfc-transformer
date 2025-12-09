@@ -1,5 +1,35 @@
 packages:
   - playground
+catalogs:
+  dev:
+    '@antfu/eslint-config': 6.2.0
+    '@babel/types': 7.28.5
+    '@types/node': 24.10.1
+    '@vitest/coverage-v8': 4.0.14
+    '@vue/compiler-core': 3.5.25
+    '@vue/compiler-dom': 3.5.25
+    bumpp: 10.3.2
+    changelogithub: 14.0.0
+    esbuild: 0.27.0
+    eslint: 9.39.1
+    exsolve: 1.0.8
+    installed-check: 9.3.0
+    knip: 5.71.0
+    lint-staged: 16.2.7
+    mkdist: 2.4.1
+    pkg-pr-new: 0.0.62
+    simple-git-hooks: 2.13.1
+    typescript: 5.9.3
+    unbuild: 3.6.1
+    vitest: 4.0.14
+    vue: 3.5.25
+    vue-tsc: 3.1.5
+  peer:
+    '@vue/compiler-core': ^3.5.13
+    esbuild: '*'
+    vue: ^3.5.13
+  prod:
+    '@babel/parser': ^7.27.0
 ignoredBuiltDependencies:
   - '@parcel/watcher'
   - esbuild
