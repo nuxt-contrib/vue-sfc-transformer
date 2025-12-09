@@ -235,23 +235,23 @@ describe('transform typescript script setup', () => {
       </script>`
 
     expect(await legacyDeclaration(src)).toMatchInlineSnapshot(`
-      "declare const __VLS_export: import("vue").DefineComponent<{
+      "declare const _default: typeof __VLS_export;
+      export default _default;
+      declare const __VLS_export: import("vue").DefineComponent<{
           msg: string;
       }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
           msg: string;
       }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
-      declare const _default: typeof __VLS_export;
-      export default _default;
       "
     `)
     expect(await declaration(src)).toMatchInlineSnapshot(`
-      "declare const __VLS_export: import("vue").DefineComponent<{
+      "declare const _default: typeof __VLS_export;
+      export default _default;
+      declare const __VLS_export: import("vue").DefineComponent<{
           msg: string;
       }, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
           msg: string;
       }> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
-      declare const _default: typeof __VLS_export;
-      export default _default;
       "
     `)
 
