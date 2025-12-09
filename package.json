@@ -56,11 +56,11 @@
     "@babel/types": "catalog:dev",
     "@types/node": "catalog:dev",
     "@vitest/coverage-v8": "catalog:dev",
-    "@vue/compiler-core": "catalog:dev",
+    "@vue/compiler-core": "catalog:peer",
     "@vue/compiler-dom": "catalog:dev",
     "bumpp": "catalog:dev",
     "changelogithub": "catalog:dev",
-    "esbuild": "catalog:dev",
+    "esbuild": "catalog:peer",
     "eslint": "catalog:dev",
     "exsolve": "catalog:dev",
     "installed-check": "catalog:dev",
@@ -72,7 +72,7 @@
     "typescript": "catalog:dev",
     "unbuild": "catalog:dev",
     "vitest": "catalog:dev",
-    "vue": "catalog:dev",
+    "vue": "catalog:peer",
     "vue-tsc": "catalog:dev"
   },
   "resolutions": {

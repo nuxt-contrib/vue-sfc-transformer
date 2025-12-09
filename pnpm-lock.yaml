@@ -27,9 +27,6 @@ catalogs:
     changelogithub:
       specifier: 14.0.0
       version: 14.0.0
-    esbuild:
-      specifier: 0.27.0
-      version: 0.27.0
     eslint:
       specifier: 9.39.1
       version: 9.39.1
@@ -63,12 +60,16 @@ catalogs:
     vitest:
       specifier: 4.0.14
       version: 4.0.14
-    vue:
-      specifier: 3.5.25
-      version: 3.5.25
     vue-tsc:
       specifier: 3.1.5
       version: 3.1.5
+  peer:
+    esbuild:
+      specifier: 0.27.0
+      version: 0.27.0
+    vue:
+      specifier: 3.5.25
+      version: 3.5.25
   prod:
     '@babel/parser':
       specifier: ^7.27.0
@@ -111,7 +112,7 @@ importers:
         specifier: catalog:dev
         version: 14.0.0(magicast@0.3.5)
       esbuild:
-        specifier: catalog:dev
+        specifier: catalog:peer
         version: 0.27.0
       eslint:
         specifier: catalog:dev
@@ -147,7 +148,7 @@ importers:
         specifier: catalog:dev
         version: 4.0.14(@types/node@24.10.1)(jiti@2.6.1)(yaml@2.8.1)
       vue:
-        specifier: catalog:dev
+        specifier: catalog:peer
         version: 3.5.25(typescript@5.9.3)
       vue-tsc:
         specifier: catalog:dev
