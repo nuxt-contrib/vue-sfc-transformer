@@ -19,7 +19,7 @@ catalogs:
     '@vue/compiler-sfc': 3.5.25
     bumpp: 10.3.2
     changelogithub: 14.0.0
-    eslint: 9.39.1
+    eslint: 9.39.2
     exsolve: 1.0.8
     installed-check: 9.3.0
     knip: 5.73.4
