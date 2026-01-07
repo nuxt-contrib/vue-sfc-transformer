@@ -30,7 +30,7 @@ catalogs:
     typescript: 5.9.3
     unbuild: 3.6.1
     vitest: 4.0.16
-    vue-tsc: 3.2.1
+    vue-tsc: 3.2.2
   peer:
     '@vue/compiler-core': 3.5.26
     esbuild: 0.27.2
