@@ -12,7 +12,7 @@ packages:
 catalogs:
   dev:
     '@antfu/eslint-config': 6.7.3
-    '@babel/types': 7.28.5
+    '@babel/types': 7.28.6
     '@types/node': 24.10.7
     '@vitest/coverage-v8': 4.0.17
     '@vue/compiler-dom': 3.5.26
