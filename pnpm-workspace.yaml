@@ -13,16 +13,16 @@ catalogs:
   dev:
     '@antfu/eslint-config': 6.7.3
     '@babel/types': 7.28.6
-    '@types/node': 24.10.7
+    '@types/node': 24.10.9
     '@vitest/coverage-v8': 4.0.17
-    '@vue/compiler-dom': 3.5.26
-    '@vue/compiler-sfc': 3.5.26
-    bumpp: 10.3.2
+    '@vue/compiler-dom': 3.5.27
+    '@vue/compiler-sfc': 3.5.27
+    bumpp: 10.4.0
     changelogithub: 14.0.0
     eslint: 9.39.2
     exsolve: 1.0.8
     installed-check: 9.3.0
-    knip: 5.80.2
+    knip: 5.82.0
     lint-staged: 16.2.7
     mkdist: 2.4.1
     pkg-pr-new: 0.0.62
@@ -32,7 +32,7 @@ catalogs:
     vitest: 4.0.17
     vue-tsc: 3.2.2
   peer:
-    '@vue/compiler-core': 3.5.26
+    '@vue/compiler-core': 3.5.27
     esbuild: 0.27.2
     vue: 3.5.26
   prod:
