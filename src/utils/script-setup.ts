@@ -257,6 +257,9 @@ async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptS
     filename: id,
     source: scriptSetup.content,
     ast: ast.program.body,
+    warn: (msg) => {
+      console.warn(`[vue-sfc-transformer] ${msg}`)
+    },
     error: (msg) => {
       throw new Error(`[vue-sfc-transformer] ${msg}`)
     },
