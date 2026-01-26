@@ -11,7 +11,7 @@ packages:
   - playground
 catalogs:
   dev:
-    '@antfu/eslint-config': 7.0.1
+    '@antfu/eslint-config': 7.2.0
     '@babel/types': 7.28.6
     '@types/node': 24.10.9
     '@vitest/coverage-v8': 4.0.17
@@ -30,7 +30,7 @@ catalogs:
     typescript: 5.9.3
     unbuild: 3.6.1
     vitest: 4.0.17
-    vue-tsc: 3.2.2
+    vue-tsc: 3.2.4
   peer:
     '@vue/compiler-core': 3.5.27
     esbuild: 0.27.2
