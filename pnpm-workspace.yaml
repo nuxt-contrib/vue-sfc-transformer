@@ -13,7 +13,7 @@ catalogs:
   dev:
     '@antfu/eslint-config': 7.2.0
     '@babel/types': 7.29.0
-    '@types/node': 24.10.9
+    '@types/node': 24.10.10
     '@vitest/coverage-v8': 4.0.18
     '@vue/compiler-dom': 3.5.27
     '@vue/compiler-sfc': 3.5.27
@@ -22,10 +22,10 @@ catalogs:
     eslint: 9.39.2
     exsolve: 1.0.8
     installed-check: 9.3.0
-    knip: 5.82.1
+    knip: 5.83.0
     lint-staged: 16.2.7
     mkdist: 2.4.1
-    pkg-pr-new: 0.0.62
+    pkg-pr-new: 0.0.63
     simple-git-hooks: 2.13.1
     typescript: 5.9.3
     unbuild: 3.6.1
