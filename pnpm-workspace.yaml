@@ -11,18 +11,18 @@ packages:
   - playground
 catalogs:
   dev:
-    '@antfu/eslint-config': 7.2.0
+    '@antfu/eslint-config': 7.3.0
     '@babel/types': 7.29.0
-    '@types/node': 24.10.10
+    '@types/node': 24.10.12
     '@vitest/coverage-v8': 4.0.18
     '@vue/compiler-dom': 3.5.27
     '@vue/compiler-sfc': 3.5.27
-    bumpp: 10.4.0
+    bumpp: 10.4.1
     changelogithub: 14.0.0
     eslint: 9.39.2
     exsolve: 1.0.8
     installed-check: 9.3.0
-    knip: 5.83.0
+    knip: 5.83.1
     lint-staged: 16.2.7
     mkdist: 2.4.1
     pkg-pr-new: 0.0.63
@@ -33,7 +33,7 @@ catalogs:
     vue-tsc: 3.2.4
   peer:
     '@vue/compiler-core': 3.5.27
-    esbuild: 0.27.2
+    esbuild: 0.27.3
     vue: 3.5.27
   prod:
     '@babel/parser': ^7.27.0
