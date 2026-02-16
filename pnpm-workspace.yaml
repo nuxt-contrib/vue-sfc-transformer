@@ -11,9 +11,9 @@ packages:
   - playground
 catalogs:
   dev:
-    '@antfu/eslint-config': 7.3.0
+    '@antfu/eslint-config': 7.4.3
     '@babel/types': 7.29.0
-    '@types/node': 24.10.12
+    '@types/node': 24.10.13
     '@vitest/coverage-v8': 4.0.18
     '@vue/compiler-dom': 3.5.28
     '@vue/compiler-sfc': 3.5.28
