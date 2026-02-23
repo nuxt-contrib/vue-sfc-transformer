@@ -21,7 +21,7 @@ catalogs:
     changelogithub: 14.0.0
     eslint: 10.0.1
     exsolve: 1.0.8
-    installed-check: 10.0.0
+    installed-check: 10.0.1
     knip: 5.85.0
     lint-staged: 16.2.7
     mkdist: 2.4.1
