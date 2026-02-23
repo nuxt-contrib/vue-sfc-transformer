@@ -22,7 +22,7 @@ catalogs:
     eslint: 10.0.0
     exsolve: 1.0.8
     installed-check: 10.0.0
-    knip: 5.83.1
+    knip: 5.85.0
     lint-staged: 16.2.7
     mkdist: 2.4.1
     pkg-pr-new: 0.0.63
@@ -30,7 +30,7 @@ catalogs:
     typescript: 5.9.3
     unbuild: 3.6.1
     vitest: 4.0.18
-    vue-tsc: 3.2.4
+    vue-tsc: 3.2.5
   peer:
     '@vue/compiler-core': 3.5.28
     esbuild: 0.27.3
