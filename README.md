@@ -89,9 +89,9 @@ Published under [MIT License](./LICENCE).
 
 <!-- Badges -->
 
-[npm-version-src]: https://img.shields.io/npm/v/vue-sfc-transformer?style=flat-square
-[npm-version-href]: https://npmjs.com/package/vue-sfc-transformer
-[npm-downloads-src]: https://img.shields.io/npm/dm/vue-sfc-transformer?style=flat-square
+[npm-version-src]: https://npmx.dev/api/registry/badge/version/vue-sfc-transformer
+[npm-version-href]: https://npmx.dev/package/vue-sfc-transformer
+[npm-downloads-src]: https://npmx.dev/api/registry/badge/downloads/vue-sfc-transformer
 [npm-downloads-href]: https://npm.chart.dev/vue-sfc-transformer
 [github-actions-src]: https://img.shields.io/github/actions/workflow/status/nuxt-contrvue-sfc-transformerransformer/ci.yml?branch=main&style=flat-square
 [github-actions-href]: https://github.com/nuxt-contrvue-sfc-transformerransformer/actions?query=workflow%3Aci
