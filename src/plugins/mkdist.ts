@@ -21,6 +21,8 @@ function importEsbuild(): Promise<typeof import('esbuild')> | typeof import('esb
   })()
 }
 
+const BACKSLASH_REGEX = /\\/g
+
 let _isMkdistSupportDualVueDts: boolean | undefined
 function isMkdistSupportDualVueDts(): boolean {
   if (typeof _isMkdistSupportDualVueDts === 'boolean') {
@@ -28,7 +30,7 @@ function isMkdistSupportDualVueDts(): boolean {
   }
   try {
     const require = createRequire(import.meta.url)
-    const mkdistPath = require.resolve('mkdist').replace(/\\/g, '/')
+    const mkdistPath = require.resolve('mkdist').replace(BACKSLASH_REGEX, '/')
     const lastNodeModules = mkdistPath.lastIndexOf('/mkdist/')
     const withoutDist = lastNodeModules !== -1 ? mkdistPath.slice(0, lastNodeModules) : mkdistPath
     const packageJson = readFileSync(join(withoutDist, 'mkdist/package.json'), 'utf-8')

@@ -119,7 +119,7 @@ function processDefineEmits(node: Expression, context: Context): string | undefi
   context.ctx.emitsTypeDecl = emitsTypeDecl
   const emits = extractRuntimeEmits(context.ctx)
 
-  return `defineEmits([${[...emits].map(emit => `"${emit}"`).join(', ')}])`
+  return `defineEmits([${Array.from(emits, emit => `"${emit}"`).join(', ')}])`
 }
 function processWithDefaults(node: Expression, context: Context): string | undefined {
   if (!isCallOf(node, WITH_DEFAULTS)) {

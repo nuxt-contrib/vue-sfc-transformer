@@ -11,19 +11,19 @@ packages:
   - playground
 catalogs:
   dev:
-    '@antfu/eslint-config': 7.6.1
+    '@antfu/eslint-config': 7.7.0
     '@babel/types': 7.29.0
-    '@types/node': 24.11.0
+    '@types/node': 24.12.0
     '@vitest/coverage-v8': 4.0.18
-    '@vue/compiler-dom': 3.5.29
-    '@vue/compiler-sfc': 3.5.29
+    '@vue/compiler-dom': 3.5.30
+    '@vue/compiler-sfc': 3.5.30
     bumpp: 10.4.1
     changelogithub: 14.0.0
     eslint: 10.0.3
     exsolve: 1.0.8
     installed-check: 10.0.1
-    knip: 5.85.0
-    lint-staged: 16.3.1
+    knip: 5.86.0
+    lint-staged: 16.3.3
     mkdist: 2.4.1
     pkg-pr-new: 0.0.65
     simple-git-hooks: 2.13.1
@@ -32,7 +32,7 @@ catalogs:
     vitest: 4.0.18
     vue-tsc: 3.2.5
   peer:
-    '@vue/compiler-core': 3.5.29
+    '@vue/compiler-core': 3.5.30
     esbuild: 0.27.3
     vue: 3.5.30
   prod:
