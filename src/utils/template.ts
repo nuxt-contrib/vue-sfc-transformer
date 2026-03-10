@@ -243,13 +243,16 @@ interface SnippetHandler {
   standalone: boolean
 }
 
+const WRAPPER_REGEX = /^(wrapper_\d+)\(([\s\S]*?)\);$/
+const WRAPPER_ARROW_REGEX = /^(wrapper_\d+)\(\(\) => \{([\s\S]*?)\}\);$/
+const TRAILING_SEMICOLON_REGEX = /;$/
+const CONST_WRAPPER_REGEX = /^const([\s\S]*?)=\s+wrapper_\d+\(\);$/
+
 const defaultSnippetHandler: SnippetHandler = {
   key: node => `default$:${node.src}`,
   prepare: (node, id) => `wrapper_${id}(${node.src});`,
   parse: (code) => {
-    const wrapperRegex = /^(wrapper_\d+)\(([\s\S]*?)\);$/
-
-    const [_, wrapperName, res] = code.match(wrapperRegex) ?? []
+    const [_, wrapperName, res] = code.match(WRAPPER_REGEX) ?? []
     if (!wrapperName || !res) {
       return undefined
     }
@@ -284,14 +287,12 @@ const multipleStatementsSnippetHandler: SnippetHandler = {
   },
   prepare: (node, id) => `wrapper_${id}(() => {${node.src}});`,
   parse: (code) => {
-    const wrapperRegex = /^(wrapper_\d+)\(\(\) => \{([\s\S]*?)\}\);$/
-
-    const [_, wrapperName, res] = code.trim().match(wrapperRegex) ?? []
+    const [_, wrapperName, res] = code.trim().match(WRAPPER_ARROW_REGEX) ?? []
     if (!wrapperName || !res) {
       return undefined
     }
 
-    return res.trim().replace(/;$/, '')
+    return res.trim().replace(TRAILING_SEMICOLON_REGEX, '')
   },
   standalone: false,
 }
@@ -321,8 +322,7 @@ const destructureSnippetHandler: SnippetHandler = {
   },
   prepare: (node, id) => `const ${node.src} = wrapper_${id}();`,
   parse: (code) => {
-    const regex = /^const([\s\S]*?)=\s+wrapper_\d+\(\);$/
-    const [_, res] = code.match(regex) ?? []
+    const [_, res] = code.match(CONST_WRAPPER_REGEX) ?? []
     if (!res) {
       return undefined
     }
@@ -367,7 +367,7 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
 
   const resultMap = new Map<Expression, string>()
 
-  const orders = Array.from(transformMap.values())
+  const orders = [...transformMap.values()]
   const batch = orders.filter(({ handler }) => !handler.standalone)
   const standalone = orders.filter(({ handler }) => handler.standalone)
 
