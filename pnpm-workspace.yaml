@@ -22,7 +22,7 @@ catalogs:
     eslint: 10.0.3
     exsolve: 1.0.8
     installed-check: 10.0.1
-    knip: 5.87.0
+    knip: 6.0.2
     lint-staged: 16.4.0
     mkdist: 2.4.1
     pkg-pr-new: 0.0.66
