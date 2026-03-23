@@ -27,7 +27,7 @@ catalogs:
     mkdist: 2.4.1
     pkg-pr-new: 0.0.66
     simple-git-hooks: 2.13.1
-    typescript: 5.9.3
+    typescript: 6.0.2
     unbuild: 3.6.1
     vitest: 4.1.1
     vue-tsc: 3.2.6
