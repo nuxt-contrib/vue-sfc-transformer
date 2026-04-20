@@ -27,10 +27,10 @@ catalogs:
     mkdist: 2.4.1
     pkg-pr-new: 0.0.66
     simple-git-hooks: 2.13.1
-    typescript: 6.0.2
+    typescript: 6.0.3
     unbuild: 3.6.1
     vitest: 4.1.4
-    vue-tsc: 3.2.6
+    vue-tsc: 3.2.7
   peer:
     '@vue/compiler-core': 3.5.32
     esbuild: 0.28.0
