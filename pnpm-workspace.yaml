@@ -34,7 +34,7 @@ catalogs:
   peer:
     '@vue/compiler-core': 3.5.32
     esbuild: 0.28.0
-    vue: 3.5.32
+    vue: 3.5.33
   prod:
     '@babel/parser': ^7.27.0
 ignoredBuiltDependencies:
