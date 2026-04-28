@@ -9,6 +9,9 @@ trustPolicyExclude:
   - undici@5.29.0 || 6.22.0
 packages:
   - playground
+overrides:
+  '@vue/compiler-core': 3.5.33
+  vue-sfc-transformer: 'link:.'
 catalogs:
   dev:
     '@antfu/eslint-config': 8.2.0
@@ -42,7 +45,3 @@ ignoredBuiltDependencies:
   - esbuild
 onlyBuiltDependencies:
   - simple-git-hooks
-
-overrides:
-  "@vue/compiler-core": "3.5.33"
-  vue-sfc-transformer: "link:."
