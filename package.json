@@ -75,10 +75,6 @@
     "vue": "catalog:peer",
     "vue-tsc": "catalog:dev"
   },
-  "resolutions": {
-    "@vue/compiler-core": "3.5.33",
-    "vue-sfc-transformer": "link:."
-  },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
   },

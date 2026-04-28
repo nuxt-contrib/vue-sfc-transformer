@@ -42,3 +42,7 @@ ignoredBuiltDependencies:
   - esbuild
 onlyBuiltDependencies:
   - simple-git-hooks
+
+overrides:
+  "@vue/compiler-core": "3.5.33"
+  vue-sfc-transformer: "link:."
