@@ -64,8 +64,8 @@ catalogs:
       specifier: 4.1.5
       version: 4.1.5
     vue-tsc:
-      specifier: 3.2.7
-      version: 3.2.7
+      specifier: 3.2.8
+      version: 3.2.8
   peer:
     esbuild:
       specifier: 0.28.0
@@ -134,7 +134,7 @@ importers:
         version: 16.4.0
       mkdist:
         specifier: catalog:dev
-        version: 2.4.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.7(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3))
+        version: 2.4.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.8(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3))
       pkg-pr-new:
         specifier: catalog:dev
         version: 0.0.70
@@ -146,7 +146,7 @@ importers:
         version: 6.0.3
       unbuild:
         specifier: catalog:dev
-        version: 3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.7(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3))
+        version: 3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.8(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3))
       vitest:
         specifier: catalog:dev
         version: 4.1.5(@types/node@24.12.2)(@vitest/coverage-v8@4.1.5)(vite@7.3.1(@types/node@24.12.2)(jiti@2.6.1)(yaml@2.8.2))
@@ -155,7 +155,7 @@ importers:
         version: 3.5.33(typescript@6.0.3)
       vue-tsc:
         specifier: catalog:dev
-        version: 3.2.7(typescript@6.0.3)
+        version: 3.2.8(typescript@6.0.3)
 
   playground:
     dependencies:
@@ -1648,8 +1648,8 @@ packages:
   '@vue/compiler-ssr@3.5.33':
     resolution: {integrity: sha512-IErjYdnj1qIupG5xxiVIYiiRvDhGWV4zuh/RCrwfYpuL+HWQzeU6lCk/nF9r7olWMnjKxCAkOctT2qFWFkzb1A==}
 
-  '@vue/language-core@3.2.7':
-    resolution: {integrity: sha512-Gn4q/tRxbpVGLEuARQ43p3YELlNAFgRUVCgW9U5Cr+5q4vfD2bWDWpl3ABbJMXUt5xlE1dF8dkigg2aUq7JYYw==}
+  '@vue/language-core@3.2.8':
+    resolution: {integrity: sha512-9OiSPQFiAAWNVnXb0d2dcTmcKnFQamhuNES6ayyISrb/mwPWVgoGdAqSfCWqKhQpa3D5gDTcYD+w7ObiheZ81g==}
 
   '@vue/reactivity@3.5.33':
     resolution: {integrity: sha512-p8UfIqyIhb0rYGlSgSBV+lPhF2iUSBcRy7enhTmPqKWadHy9kcOFYF1AejYBP9P+avnd3OBbD49DU4pLWX/94A==}
@@ -3862,8 +3862,8 @@ packages:
       esbuild: '*'
       vue: ^3.5.13
 
-  vue-tsc@3.2.7:
-    resolution: {integrity: sha512-zc1tL3HoQni1zGTGrwBVRQb7rGP5SWdu/m4rGB6JcnAC5MT5LFZIxF7Y+EJEnt4hGF23d60rXH7gRjHGb5KQQQ==}
+  vue-tsc@3.2.8:
+    resolution: {integrity: sha512-27vTLJ6Q2370obOd0PFYoYoKnmXJ521uUIedrs3Zhhhg/8YG10VOCMmwt+JQslatpAMTDbnWiitLnoD5VlIvog==}
     hasBin: true
     peerDependencies:
       typescript: '>=5.0.0'
@@ -5132,7 +5132,7 @@ snapshots:
       '@vue/compiler-dom': 3.5.33
       '@vue/shared': 3.5.33
 
-  '@vue/language-core@3.2.7':
+  '@vue/language-core@3.2.8':
     dependencies:
       '@volar/language-core': 2.4.28
       '@vue/compiler-dom': 3.5.33
@@ -6774,7 +6774,7 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
-  mkdist@2.4.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.7(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3)):
+  mkdist@2.4.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.8(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3)):
     dependencies:
       autoprefixer: 10.4.24(postcss@8.5.13)
       citty: 0.1.6
@@ -6793,7 +6793,7 @@ snapshots:
       typescript: 6.0.3
       vue: 3.5.33(typescript@6.0.3)
       vue-sfc-transformer: 0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3))
-      vue-tsc: 3.2.7(typescript@6.0.3)
+      vue-tsc: 3.2.8(typescript@6.0.3)
 
   mlly@1.8.0:
     dependencies:
@@ -7532,7 +7532,7 @@ snapshots:
 
   unbash@3.0.0: {}
 
-  unbuild@3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.7(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3)):
+  unbuild@3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.8(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3)):
     dependencies:
       '@rollup/plugin-alias': 5.1.1(rollup@4.60.2)
       '@rollup/plugin-commonjs': 28.0.9(rollup@4.60.2)
@@ -7548,7 +7548,7 @@ snapshots:
       hookable: 5.5.3
       jiti: 2.6.1
       magic-string: 0.30.21
-      mkdist: 2.4.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.7(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3))
+      mkdist: 2.4.1(typescript@6.0.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.33)(esbuild@0.28.0)(vue@3.5.33(typescript@6.0.3)))(vue-tsc@3.2.8(typescript@6.0.3))(vue@3.5.33(typescript@6.0.3))
       mlly: 1.8.0
       pathe: 2.0.3
       pkg-types: 2.3.1
@@ -7710,10 +7710,10 @@ snapshots:
       vue: 3.5.33(typescript@6.0.3)
     optional: true
 
-  vue-tsc@3.2.7(typescript@6.0.3):
+  vue-tsc@3.2.8(typescript@6.0.3):
     dependencies:
       '@volar/typescript': 2.4.28
-      '@vue/language-core': 3.2.7
+      '@vue/language-core': 3.2.8
       typescript: 6.0.3
 
   vue@3.5.33(typescript@6.0.3):
