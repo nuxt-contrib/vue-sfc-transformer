@@ -25,10 +25,10 @@ catalogs:
     eslint: 10.2.1
     exsolve: 1.0.8
     installed-check: 10.0.1
-    knip: 6.7.0
+    knip: 6.11.0
     lint-staged: 16.4.0
     mkdist: 2.4.1
-    pkg-pr-new: 0.0.67
+    pkg-pr-new: 0.0.70
     simple-git-hooks: 2.13.1
     typescript: 6.0.3
     unbuild: 3.6.1
