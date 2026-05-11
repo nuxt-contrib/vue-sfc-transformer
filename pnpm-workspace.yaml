@@ -26,7 +26,7 @@ catalogs:
     exsolve: 1.0.8
     installed-check: 10.0.1
     knip: 6.11.0
-    lint-staged: 16.4.0
+    lint-staged: 17.0.4
     mkdist: 2.4.1
     pkg-pr-new: 0.0.70
     simple-git-hooks: 2.13.1
