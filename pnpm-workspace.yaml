@@ -14,7 +14,7 @@ overrides:
   vue-sfc-transformer: 'link:.'
 catalogs:
   dev:
-    '@antfu/eslint-config': 8.3.0
+    '@antfu/eslint-config': 9.0.0
     '@babel/types': 7.29.0
     '@types/node': 24.12.3
     '@vitest/coverage-v8': 4.1.6
