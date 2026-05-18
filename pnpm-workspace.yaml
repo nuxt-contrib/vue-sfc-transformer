@@ -28,7 +28,7 @@ catalogs:
     knip: 6.14.1
     lint-staged: 17.0.5
     mkdist: 2.4.1
-    pkg-pr-new: 0.0.73
+    pkg-pr-new: 0.0.74
     simple-git-hooks: 2.13.1
     typescript: 6.0.3
     unbuild: 3.6.1
