@@ -70,6 +70,44 @@ import { vueLoader } from 'vue-sfc-transformer/mkdist'
 
 > `mkdist` will automatically use the loader from `vue-sfc-transformer` when you pass `vue` to the `loaders` option and have this package installed.
 
+## Rolldown plugin
+
+`vue-sfc-transformer/rolldown` ships a [rolldown](https://github.com/rolldown/rolldown) plugin that transpiles `<script lang="ts">` and template expressions, then emits a `<name>.d.vue.ts` declaration for each SFC under `srcDir`. That's the form `vue-tsc` / `@vue/language-core` / `@volar/typescript` (since 2.4.19) resolve for `import './Foo.vue'`. Pass `emitLegacyDeclarationAlias: true` to also emit the older `<name>.vue.d.ts` form, which plain `tsc` resolves but vue-tsc does not.
+
+Works with anything that runs rolldown plugins: [tsdown](https://github.com/rolldown/tsdown), [obuild](https://github.com/unjs/obuild) or rolldown directly.
+
+```sh
+pnpm add -D rolldown @volar/typescript @vue/language-core typescript
+```
+
+```ts
+// tsdown.config.ts
+import { defineConfig } from 'tsdown'
+import { vueSfcPlugin } from 'vue-sfc-transformer/rolldown'
+
+export default defineConfig({
+  entry: ['src/index.ts'],
+  plugins: [vueSfcPlugin({ srcDir: 'src' })],
+})
+```
+
+Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely.
+
+Pass `cache: false` to disable. Pass `cacheVersion: '<your-string>'` to namespace the cache under your control on top of the auto-derivation.
+
+The `cache` option is structurally compatible with the `getItem` / `setItem` subset of [unstorage](https://github.com/unjs/unstorage)'s `Storage`, so you can hand it an unstorage instance directly:
+
+```ts
+import { createStorage } from 'unstorage'
+import redisDriver from 'unstorage/drivers/redis'
+import { vueSfcPlugin } from 'vue-sfc-transformer/rolldown'
+
+vueSfcPlugin({
+  srcDir: 'src',
+  cache: createStorage({ driver: redisDriver({ url: 'redis://…' }) }),
+})
+```
+
 ## 💻 Development
 
 - Clone this repository

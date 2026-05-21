@@ -9,7 +9,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.mjs",
-    "./mkdist": "./dist/mkdist.mjs"
+    "./mkdist": "./dist/mkdist.mjs",
+    "./rolldown": "./dist/rolldown.mjs"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -20,6 +21,9 @@
       ],
       "mkdist": [
         "./dist/mkdist.d.mts"
+      ],
+      "rolldown": [
+        "./dist/rolldown.d.mts"
       ]
     }
   },
@@ -40,24 +44,46 @@
     "test": "pnpm test:unit && pnpm test:types",
     "test:unit": "vitest",
     "test:knip": "knip",
-    "test:versions": "installed-check -d --no-workspaces",
+    "test:versions": "installed-check -d --no-workspaces -i rolldown",
     "test:types": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@volar/typescript": "^2.4.0",
     "@vue/compiler-core": "^3.5.13",
+    "@vue/language-core": "^3.0.0",
     "esbuild": "*",
+    "rolldown": ">=1.0.0-beta.0",
+    "typescript": ">=5.0.0",
     "vue": "^3.5.13"
   },
+  "peerDependenciesMeta": {
+    "@volar/typescript": {
+      "optional": true
+    },
+    "@vue/language-core": {
+      "optional": true
+    },
+    "rolldown": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
   "dependencies": {
-    "@babel/parser": "catalog:prod"
+    "@babel/parser": "catalog:prod",
+    "pathe": "catalog:prod",
+    "tinyglobby": "catalog:prod"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
     "@babel/types": "catalog:dev",
     "@types/node": "catalog:dev",
     "@vitest/coverage-v8": "catalog:dev",
+    "@volar/typescript": "catalog:dev",
     "@vue/compiler-core": "catalog:peer",
     "@vue/compiler-dom": "catalog:dev",
+    "@vue/language-core": "catalog:dev",
     "bumpp": "catalog:dev",
     "changelogithub": "catalog:dev",
     "esbuild": "catalog:peer",
@@ -68,7 +94,9 @@
     "lint-staged": "catalog:dev",
     "mkdist": "catalog:dev",
     "pkg-pr-new": "catalog:dev",
+    "rolldown": "catalog:dev",
     "simple-git-hooks": "catalog:dev",
+    "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
     "unbuild": "catalog:dev",
     "vitest": "catalog:dev",
