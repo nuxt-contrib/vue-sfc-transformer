@@ -21,7 +21,7 @@ catalogs:
     '@volar/typescript': 2.4.28
     '@vue/compiler-dom': 3.5.34
     '@vue/compiler-sfc': 3.5.34
-    '@vue/language-core': 3.2.8
+    '@vue/language-core': 3.3.1
     bumpp: 11.1.0
     changelogithub: 14.0.0
     eslint: 10.4.0
@@ -30,14 +30,14 @@ catalogs:
     knip: 6.14.1
     lint-staged: 17.0.5
     mkdist: 2.4.1
-    pkg-pr-new: 0.0.74
-    rolldown: 1.0.1
+    pkg-pr-new: 0.0.75
+    rolldown: 1.0.2
     simple-git-hooks: 2.13.1
     tsdown: 0.22.0
     typescript: 6.0.3
     unbuild: 3.6.1
     vitest: 4.1.6
-    vue-tsc: 3.2.9
+    vue-tsc: 3.3.1
   peer:
     '@vue/compiler-core': 3.5.34
     esbuild: 0.28.0
