@@ -37,6 +37,17 @@ const runVueTsc: VueTscRunner = (files, options) => {
     vfs.set(normalize(file.id), file.source)
   }
 
+  const parsed = vueLanguageCore.createParsedCommandLineByJson(
+    ts,
+    ts.sys,
+    options.rootDir,
+    readTsconfigJson(options.tsconfig),
+    options.tsconfig,
+  )
+
+  // Mix the user's path-resolution options (`baseUrl`, `paths`,
+  // `pathsBasePath`) into our hardcoded compiler options so imports like
+  // `import type { Foo } from '#alias'` resolve when emitting declarations.
   const compilerOptions: ts.CompilerOptions = {
     allowJs: true,
     allowImportingTsExtensions: true,
@@ -49,6 +60,9 @@ const runVueTsc: VueTscRunner = (files, options) => {
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
+    ...(parsed.options.baseUrl !== undefined && { baseUrl: parsed.options.baseUrl }),
+    ...(parsed.options.paths !== undefined && { paths: parsed.options.paths }),
+    ...(parsed.options.pathsBasePath !== undefined && { pathsBasePath: parsed.options.pathsBasePath }),
   }
 
   const tsHost = ts.createCompilerHost(compilerOptions)
@@ -74,13 +88,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
       const vueLanguagePlugin = vueLanguageCore.createVueLanguagePlugin(
         tsRef,
         programOptions.options,
-        vueLanguageCore.createParsedCommandLineByJson(
-          tsRef,
-          tsRef.sys,
-          options.rootDir,
-          readTsconfigJson(options.tsconfig),
-          options.tsconfig,
-        ).vueOptions,
+        parsed.vueOptions,
         (id: string) => id,
       )
       return [vueLanguagePlugin]
