@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { mkdist } from 'mkdist'
 import { afterAll, describe, expect, it, vi } from 'vitest'
+import { parse } from 'vue/compiler-sfc'
 import { defineDefaultBlockLoader } from '../src/block-loader/default'
 import { vueLoader } from '../src/mkdist'
 import { cleanupBreakLine } from '../src/utils/string'
@@ -363,6 +364,23 @@ describe('transform typescript script setup', () => {
       </script>
       "
     `)
+  })
+
+  it('preserves custom block attrs when mkdist rebuilds the SFC', async () => {
+    const src = `
+      <script lang="ts">
+        export default { name: 'App' }
+      </script>
+
+      <docs note='says "hello"' literal="Tom &amp; Jerry &amp;quot;">
+        docs
+      </docs>`
+
+    const output = await fixture(src)
+    const { descriptor } = parse(output, { filename: 'index.vue' })
+
+    expect(descriptor.customBlocks[0]?.attrs?.note).toBe('says "hello"')
+    expect(descriptor.customBlocks[0]?.attrs?.literal).toBe('Tom & Jerry &quot;')
   })
 
   it('removes unnecessary break lines', async () => {

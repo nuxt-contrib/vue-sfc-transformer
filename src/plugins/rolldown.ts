@@ -11,8 +11,9 @@ import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transform
 import { parse } from 'vue/compiler-sfc'
 
 import { emitVueDeclarations } from '../dts/emit'
+import { escapeSfcAttrValue } from '../utils/attrs'
 
-interface VueSfcPluginOptions {
+export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
   // as the root that emitted `.vue` / `.d.vue.ts` paths are relative to.
   srcDir: string
@@ -71,6 +72,7 @@ async function transpileScript(code: string, filename = '__sfc.ts'): Promise<str
 export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
   const cwd = pluginOptions.cwd ?? process.cwd()
   const srcDir = resolve(cwd, pluginOptions.srcDir)
+  const tsconfig = pluginOptions.tsconfig ? resolve(cwd, pluginOptions.tsconfig) : undefined
   const preserveSideEffectImports = pluginOptions.preserveSideEffectImports ?? []
 
   return {
@@ -86,7 +88,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
       // we externalise it and rely on the sibling unbundle entry to emit it
       // at the matching path.
       if (importer && !resolveOptions.isEntry && preserveSideEffectImports.some(re => re.test(id))) {
-        const idWithExt = `${id.replace(/\.[tj]s$/, '')}.js`
+        const idWithExt = `${id.replace(/\.[cm]?[tj]sx?$/, '')}.js`
         return { id: idWithExt, external: 'relative' }
       }
       if (!importer || resolveOptions.isEntry) {
@@ -120,7 +122,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         rawSources.set(file, raw)
         const { runtime, errors } = await transformVueSfc(raw, file)
         for (const error of errors) {
-          this.warn({ message: `[vue-sfc-transformer] ${file}: ${error.message}`, id: file })
+          this.error({ message: `[vue-sfc-transformer] ${file}: ${error.message}`, id: file })
         }
         runtimeByFile.set(file, runtime)
         this.addWatchFile(file)
@@ -130,7 +132,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         files.map(id => ({ id, source: rawSources.get(id)! })),
         {
           rootDir: cwd,
-          tsconfig: pluginOptions.tsconfig,
+          tsconfig,
           cache: pluginOptions.cache,
           cacheVersion: pluginOptions.cacheVersion,
         },
@@ -141,8 +143,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         this.emitFile({ type: 'asset', fileName: rel, source: runtimeByFile.get(file)! })
         const dts = declarations.get(file)
         if (dts === undefined) {
-          this.warn({ message: `[vue-sfc-transformer] vue-tsc did not emit a declaration for ${file}`, id: file })
-          continue
+          this.error({ message: `[vue-sfc-transformer] vue-tsc did not emit a declaration for ${file}`, id: file })
         }
         this.emitFile({ type: 'asset', fileName: rel.replace(/\.vue$/, '.d.vue.ts'), source: dts })
         if (pluginOptions.emitLegacyDeclarationAlias) {
@@ -227,7 +228,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
 
   const runtime = blocks.map((block) => {
     const attrs = Object.entries(block.attrs)
-      .map(([key, value]) => value === true ? key : value ? `${key}="${value}"` : undefined)
+      .map(([key, value]) => value === true ? key : value ? `${key}="${escapeSfcAttrValue(value)}"` : undefined)
       .filter(Boolean)
       .join(' ')
     const header = `<${`${block.type} ${attrs}`.trim()}>`
