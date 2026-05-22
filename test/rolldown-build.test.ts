@@ -110,6 +110,40 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     catch {}
     expect(cached).toEqual([])
   })
+  it('resolves a relative tsconfig path from the plugin cwd', async () => {
+    const tsconfigRoot = join(root, 'relative-tsconfig')
+    await rm(tsconfigRoot, { force: true, recursive: true })
+    await mkdir(join(tsconfigRoot, 'src'), { recursive: true })
+    await mkdir(join(tsconfigRoot, 'types'), { recursive: true })
+    await writeFile(join(tsconfigRoot, 'src/index.ts'), 'export const x = 1\n')
+    await writeFile(join(tsconfigRoot, 'types/button.ts'), 'export interface ButtonProps { label: string }\n')
+    await writeFile(join(tsconfigRoot, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: {
+        paths: {
+          '#button': ['./types/button.ts'],
+        },
+      },
+    }))
+    await writeFile(join(tsconfigRoot, 'src/Button.vue'), [
+      '<script setup lang="ts">',
+      'import type { ButtonProps } from "#button"',
+      'defineProps<ButtonProps>()',
+      '</script>',
+      '<template><button>{{ label }}</button></template>',
+    ].join('\n'))
+
+    await build({
+      cwd: tsconfigRoot,
+      entry: ['src/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: tsconfigRoot, tsconfig: 'tsconfig.json', cache: false })],
+    })
+
+    const dts = await readFile(join(tsconfigRoot, 'dist/Button.d.vue.ts'), 'utf8')
+    expect(dts).toContain('ButtonProps')
+    expect(dts).toContain('#button')
+  })
 
   // Bug: attribute values are serialised with `key="${value}"` without
   // escaping double quotes in `value`. A single-quoted attribute like
