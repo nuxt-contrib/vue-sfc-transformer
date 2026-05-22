@@ -122,7 +122,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         rawSources.set(file, raw)
         const { runtime, errors } = await transformVueSfc(raw, file)
         for (const error of errors) {
-          this.warn({ message: `[vue-sfc-transformer] ${file}: ${error.message}`, id: file })
+          this.error({ message: `[vue-sfc-transformer] ${file}: ${error.message}`, id: file })
         }
         runtimeByFile.set(file, runtime)
         this.addWatchFile(file)
@@ -143,8 +143,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         this.emitFile({ type: 'asset', fileName: rel, source: runtimeByFile.get(file)! })
         const dts = declarations.get(file)
         if (dts === undefined) {
-          this.warn({ message: `[vue-sfc-transformer] vue-tsc did not emit a declaration for ${file}`, id: file })
-          continue
+          this.error({ message: `[vue-sfc-transformer] vue-tsc did not emit a declaration for ${file}`, id: file })
         }
         this.emitFile({ type: 'asset', fileName: rel.replace(/\.vue$/, '.d.vue.ts'), source: dts })
         if (pluginOptions.emitLegacyDeclarationAlias) {
