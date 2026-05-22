@@ -1,6 +1,7 @@
 import type { SFCBlock } from 'vue/compiler-sfc'
 import type { BlockLoader, BlockLoaderContext, LoaderFile, LoadFileContext } from './block-loader/types'
 import { parse } from 'vue/compiler-sfc'
+import { escapeSfcAttrValue } from './utils/attrs'
 import { preTranspileScriptSetup } from './utils/script-setup'
 import { cleanupBreakLine } from './utils/string'
 
@@ -99,7 +100,7 @@ export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): Vue
               return undefined
             }
 
-            return value === true ? key : `${key}="${value}"`
+            return value === true ? key : `${key}="${escapeSfcAttrValue(value)}"`
           })
           .filter(item => !!item)
           .join(' ')

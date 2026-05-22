@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'pathe'
 import { build } from 'tsdown'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { parse } from 'vue/compiler-sfc'
 
 import { createFileSystemDtsCache, vueSfcPlugin } from '../src/rolldown'
 
@@ -108,6 +109,64 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     }
     catch {}
     expect(cached).toEqual([])
+  })
+
+  // Bug: attribute values are serialised with `key="${value}"` without
+  // escaping double quotes in `value`. A single-quoted attribute like
+  // `note='says "hi"'` round-trips as `note="says "hi""` - invalid XML,
+  // so re-parsing the emitted .vue file recovers a truncated value.
+  it('serialises SFC block attribute values containing double-quotes as valid XML', async () => {
+    await writeFile(
+      join(root, 'src/Quoted.vue'),
+      [
+        `<template><div>hello</div></template>`,
+        `<docs note='says "hello"'>`,
+        `some docs`,
+        `</docs>`,
+      ].join('\n'),
+    )
+    await writeFile(join(root, 'src/entry.ts'), `export const y = 2\n`)
+
+    await build({
+      cwd: root,
+      entry: ['src/entry.ts'],
+      outDir: 'dist-attr-escape',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: root, cache: false })],
+    })
+
+    const output = await readFile(join(root, 'dist-attr-escape/Quoted.vue'), 'utf8')
+    // Re-parse the emitted file: the `note` attribute value must survive the
+    // round-trip intact.
+    const { descriptor } = parse(output, { filename: 'Quoted.vue' })
+    expect(descriptor.customBlocks[0]?.attrs?.note).toBe('says "hello"')
+  })
+
+  it('preserves literal character references in SFC block attribute values', async () => {
+    await writeFile(
+      join(root, 'src/Ampersand.vue'),
+      [
+        `<template><div>hello</div></template>`,
+        `<docs note="Tom &amp; Jerry &amp;quot;">`,
+        `some docs`,
+        `</docs>`,
+      ].join('\n'),
+    )
+    await writeFile(join(root, 'src/entry.ts'), `export const y = 2\n`)
+
+    await build({
+      cwd: root,
+      entry: ['src/entry.ts'],
+      outDir: 'dist-attr-ampersand-escape',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: root, cache: false })],
+    })
+
+    const output = await readFile(join(root, 'dist-attr-ampersand-escape/Ampersand.vue'), 'utf8')
+    // Vue's parser decodes character references in attributes, so the emitted
+    // `&` must be escaped before `"` to keep a literal `&quot;` from becoming `"`.
+    const { descriptor } = parse(output, { filename: 'Ampersand.vue' })
+    expect(descriptor.customBlocks[0]?.attrs?.note).toBe('Tom & Jerry &quot;')
   })
 
   // Bug: `id.replace(/\.[tj]s$/, '')` in preserveSideEffectImports does not
