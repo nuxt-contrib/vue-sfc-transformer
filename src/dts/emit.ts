@@ -96,7 +96,13 @@ const runVueTsc: VueTscRunner = (files, options) => {
   )
 
   const program = createProgram({ rootNames, options: compilerOptions, host: tsHost })
-  program.emit()
+  const emitResult = program.emit()
+  const diagnostics = [...ts.getPreEmitDiagnostics(program), ...emitResult.diagnostics]
+  const errorDiagnostics = diagnostics.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error)
+  if (emitResult.emitSkipped || errorDiagnostics.length) {
+    throw new Error(`[vue-sfc-transformer] failed to emit Vue declarations:\n${
+      formatDiagnostics(errorDiagnostics.length ? errorDiagnostics : diagnostics, options.rootDir)}`)
+  }
 
   const out = new Map<string, string>()
   for (const file of files) {
@@ -108,6 +114,14 @@ const runVueTsc: VueTscRunner = (files, options) => {
     }
   }
   return out
+}
+
+function formatDiagnostics(diagnostics: readonly ts.Diagnostic[], rootDir: string): string {
+  return ts.formatDiagnostics(diagnostics, {
+    getCanonicalFileName: fileName => fileName,
+    getCurrentDirectory: () => rootDir,
+    getNewLine: () => ts.sys.newLine,
+  }).trim()
 }
 
 export async function emitVueDeclarations(
