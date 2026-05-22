@@ -72,6 +72,7 @@ async function transpileScript(code: string, filename = '__sfc.ts'): Promise<str
 export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
   const cwd = pluginOptions.cwd ?? process.cwd()
   const srcDir = resolve(cwd, pluginOptions.srcDir)
+  const tsconfig = pluginOptions.tsconfig ? resolve(cwd, pluginOptions.tsconfig) : undefined
   const preserveSideEffectImports = pluginOptions.preserveSideEffectImports ?? []
 
   return {
@@ -131,7 +132,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         files.map(id => ({ id, source: rawSources.get(id)! })),
         {
           rootDir: cwd,
-          tsconfig: pluginOptions.tsconfig,
+          tsconfig,
           cache: pluginOptions.cache,
           cacheVersion: pluginOptions.cacheVersion,
         },
