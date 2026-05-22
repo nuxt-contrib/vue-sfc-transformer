@@ -2,26 +2,57 @@ name: release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
   pull_request_target:
     types: [closed]
-    branches:
-      - main
+    branches: [main]
+  # this is required to trigger releases when the release PR is merged, or to rerun a release if needed
   workflow_dispatch:
 
 permissions: {}
 
 jobs:
-  release:
-    uses: nuxt/.github/.github/workflows/release.yml@main
+  # `pr` mode: parse commits since the last tag, push a `release/vX.Y.Z`
+  # branch, open or update a draft release PR, and close any superseded
+  # release PRs (e.g. `release/main.0.1` when the bump is now `release/main.1.0`).
+  pr:
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
     permissions:
-      contents: write
-      actions: write
-      id-token: write
-    with:
-      # pnpm pack runs the `prepack` hook (= `pnpm build` via unbuild), but
-      # build needs devDependencies installed first.
-      pack-command: |
-        pnpm install --frozen-lockfile
-        pnpm pack --pack-destination .
+      contents: write # push the `release/vX.Y.Z` branch and delete superseded ones
+      pull-requests: write # create a release PR, update its body, close superseded PRs
+    steps:
+      - uses: danielroe/uppt@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # `release` mode: the release PR was merged. Tag the squash commit, cut a
+  # GitHub release from the PR body, dispatch the publish workflow. The
+  # `release/v` head-ref guard is what keeps regular feature-PR merges from
+  # triggering a tag attempt.
+  release:
+    if: |
+      github.event_name == 'pull_request_target'
+      && github.event.pull_request.merged == true
+      && startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the `vX.Y.Z` tag and create the GitHub release
+      actions: write # `gh workflow run release.yml --ref vX.Y.Z` chained dispatch
+    steps:
+      - uses: danielroe/uppt@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # `publish` mode: the chained dispatch from `release` lands here as a
+  # `workflow_dispatch` event on a `vX.Y.Z` tag ref. Manual recovery uses
+  # the same path (Run workflow -> pick a `v*` tag).
+  publish:
+    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the tag
+      id-token: write # OIDC claim for npm trusted publisher
+    environment: npm # must match the trusted-publisher entry on npmjs.com
+    steps:
+      - uses: danielroe/uppt@main
