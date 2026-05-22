@@ -209,6 +209,6 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
 
     const dts = result.get(id)
     expect(dts).toBeDefined()
-    expect(dts).toContain('label')
+    expect(dts).toContain('ButtonProps')
   })
 })
