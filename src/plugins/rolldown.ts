@@ -11,6 +11,7 @@ import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transform
 import { parse } from 'vue/compiler-sfc'
 
 import { emitVueDeclarations } from '../dts/emit'
+import { escapeSfcAttrValue } from '../utils/attrs'
 
 interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
@@ -227,7 +228,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
 
   const runtime = blocks.map((block) => {
     const attrs = Object.entries(block.attrs)
-      .map(([key, value]) => value === true ? key : value ? `${key}="${value.replace(/"/g, '&quot;')}"` : undefined)
+      .map(([key, value]) => value === true ? key : value ? `${key}="${escapeSfcAttrValue(value)}"` : undefined)
       .filter(Boolean)
       .join(' ')
     const header = `<${`${block.type} ${attrs}`.trim()}>`
