@@ -131,7 +131,7 @@ Published under [MIT License](./LICENCE).
 [npm-version-href]: https://npmx.dev/package/vue-sfc-transformer
 [npm-downloads-src]: https://npmx.dev/api/registry/badge/downloads/vue-sfc-transformer
 [npm-downloads-href]: https://npm.chart.dev/vue-sfc-transformer
-[github-actions-src]: https://img.shields.io/github/actions/workflow/status/nuxt-contrvue-sfc-transformerransformer/ci.yml?branch=main&style=flat-square
-[github-actions-href]: https://github.com/nuxt-contrvue-sfc-transformerransformer/actions?query=workflow%3Aci
-[codecov-src]: https://img.shields.io/codecov/c/gh/nuxt-contrvue-sfc-transformerransformer/main?style=flat-square
-[codecov-href]: https://codecov.io/gh/nuxt-contrvue-sfc-transformerransformer
+[github-actions-src]: https://img.shields.io/github/actions/workflow/status/nuxt-contrib/vue-sfc-transformer/ci.yml?branch=main&style=flat-square
+[github-actions-href]: https://github.com/nuxt-contrib/vue-sfc-transformer/actions?query=workflow%3Aci
+[codecov-src]: https://img.shields.io/codecov/c/gh/nuxt-contrib/vue-sfc-transformer/main?style=flat-square
+[codecov-href]: https://codecov.io/gh/nuxt-contrib/vue-sfc-transformer
