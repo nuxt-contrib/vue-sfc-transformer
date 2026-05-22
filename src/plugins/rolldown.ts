@@ -227,7 +227,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
 
   const runtime = blocks.map((block) => {
     const attrs = Object.entries(block.attrs)
-      .map(([key, value]) => value === true ? key : value ? `${key}="${value}"` : undefined)
+      .map(([key, value]) => value === true ? key : value ? `${key}="${value.replace(/"/g, '&quot;')}"` : undefined)
       .filter(Boolean)
       .join(' ')
     const header = `<${`${block.type} ${attrs}`.trim()}>`
