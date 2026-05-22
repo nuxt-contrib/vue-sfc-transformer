@@ -41,6 +41,15 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(files).toContain('Hello.vue')
     expect(files).toContain('Hello.d.vue.ts')
     expect(files).not.toContain('Hello.vue.d.ts')
+
+    const runtime = await readFile(join(root, 'dist-default/Hello.vue'), 'utf8')
+    expect(runtime).not.toContain('lang="ts"')
+    expect(runtime).not.toContain('defineProps<{ msg: string }>()')
+    expect(runtime).toContain('defineProps({ msg:')
+
+    const dts = await readFile(join(root, 'dist-default/Hello.d.vue.ts'), 'utf8')
+    expect(dts).toContain('msg')
+    expect(dts).toContain('DefineComponent')
   })
 
   it('also emits the legacy `.vue.d.ts` when `emitLegacyDeclarationAlias` is set', async () => {
@@ -111,6 +120,22 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     catch {}
     expect(cached).toEqual([])
   })
+  it('fails the build instead of emitting a broken SFC when Vue parsing fails', async () => {
+    const badRoot = join(root, 'parse-error')
+    await rm(badRoot, { force: true, recursive: true })
+    await mkdir(join(badRoot, 'src'), { recursive: true })
+    await writeFile(join(badRoot, 'src/index.ts'), 'export const x = 1\n')
+    await writeFile(join(badRoot, 'src/Broken.vue'), '<template><div></template>\n')
+
+    await expect(build({
+      cwd: badRoot,
+      entry: ['src/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: badRoot, cache: false })],
+    })).rejects.toThrow(/vue-sfc-transformer|parse|Invalid end tag/i)
+  })
+
   it('resolves a relative tsconfig path from the plugin cwd', async () => {
     const tsconfigRoot = join(root, 'relative-tsconfig')
     await rm(tsconfigRoot, { force: true, recursive: true })
