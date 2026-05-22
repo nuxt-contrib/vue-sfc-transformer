@@ -211,4 +211,24 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     expect(dts).toBeDefined()
     expect(dts).toContain('ButtonProps')
   })
+
+  it('fails when TypeScript reports declaration emit diagnostics', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'diagnostics-test')
+    await mkdir(root, { recursive: true })
+
+    const id = join(root, 'BrokenTypes.vue')
+    const source = [
+      `<script setup lang="ts">`,
+      `import type { MissingProps } from '#missing'`,
+      `defineProps<MissingProps>()`,
+      `</script>`,
+      `<template><slot /></template>`,
+    ].join('\n')
+    await writeFile(id, source)
+
+    await expect(emitVueDeclarations([{ id, source }], {
+      rootDir: root,
+      cache: false,
+    })).rejects.toThrow(/Cannot find module|#missing|diagnostic/i)
+  })
 })
