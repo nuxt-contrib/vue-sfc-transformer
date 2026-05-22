@@ -168,4 +168,26 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     const { descriptor } = parse(output, { filename: 'Ampersand.vue' })
     expect(descriptor.customBlocks[0]?.attrs?.note).toBe('Tom & Jerry &quot;')
   })
+
+  // Bug: `id.replace(/\.[tj]s$/, '')` in preserveSideEffectImports does not
+  // match `.mts` (or `.cts`, `.tsx`, …), so `./augment.mts` becomes
+  // `./augment.mts.js` instead of `./augment.js`.
+  it('preserveSideEffectImports: rewrites .mts imports to .js, not .mts.js', async () => {
+    await writeFile(join(root, 'src/index.ts'), `import './augment.mts'\nexport const x = 1\n`)
+    await writeFile(join(root, 'src/augment.mts'), `export {}\n`)
+
+    await build({
+      cwd: root,
+      entry: ['src/index.ts'],
+      outDir: 'dist-mts',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: root, preserveSideEffectImports: [/augment/] })],
+    })
+
+    const output = await readFile(join(root, 'dist-mts/index.mjs'), 'utf8')
+    // Should reference `./augment.js` (or a path containing `augment.js`),
+    // not `augment.mts.js`.
+    expect(output).not.toMatch(/augment\.mts\.js/)
+    expect(output).toMatch(/augment\.js/)
+  })
 })

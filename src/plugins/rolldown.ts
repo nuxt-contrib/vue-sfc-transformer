@@ -87,7 +87,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
       // we externalise it and rely on the sibling unbundle entry to emit it
       // at the matching path.
       if (importer && !resolveOptions.isEntry && preserveSideEffectImports.some(re => re.test(id))) {
-        const idWithExt = `${id.replace(/\.[tj]s$/, '')}.js`
+        const idWithExt = `${id.replace(/\.[cm]?[tj]sx?$/, '')}.js`
         return { id: idWithExt, external: 'relative' }
       }
       if (!importer || resolveOptions.isEntry) {
