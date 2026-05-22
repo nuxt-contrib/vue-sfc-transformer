@@ -177,4 +177,38 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     expect(dts).toContain('msg')
     expect(dts).toContain('DefineComponent')
   })
+
+  it('resolves path aliases from tsconfig.compilerOptions.paths in emitted declarations', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'paths-test')
+    await mkdir(root, { recursive: true })
+
+    await writeFile(join(root, 'button-types.ts'), `export interface ButtonProps { label: string }\n`)
+
+    const tsconfigPath = join(root, 'tsconfig.json')
+    await writeFile(tsconfigPath, JSON.stringify({
+      compilerOptions: {
+        paths: { '#button': ['./button-types.ts'] },
+      },
+    }))
+
+    const id = join(root, 'Button.vue')
+    const source = [
+      `<script setup lang="ts">`,
+      `import type { ButtonProps } from '#button'`,
+      `defineProps<ButtonProps>()`,
+      `</script>`,
+      `<template><slot /></template>`,
+    ].join('\n')
+    await writeFile(id, source)
+
+    const result = await emitVueDeclarations([{ id, source }], {
+      rootDir: root,
+      tsconfig: tsconfigPath,
+      cache: false,
+    })
+
+    const dts = result.get(id)
+    expect(dts).toBeDefined()
+    expect(dts).toContain('label')
+  })
 })
