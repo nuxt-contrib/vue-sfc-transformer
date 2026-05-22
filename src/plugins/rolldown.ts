@@ -13,7 +13,7 @@ import { parse } from 'vue/compiler-sfc'
 import { emitVueDeclarations } from '../dts/emit'
 import { escapeSfcAttrValue } from '../utils/attrs'
 
-interface VueSfcPluginOptions {
+export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
   // as the root that emitted `.vue` / `.d.vue.ts` paths are relative to.
   srcDir: string
