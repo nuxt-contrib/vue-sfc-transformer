@@ -1,4 +1,4 @@
-import type { DtsCache } from '../src/rolldown'
+import type { DtsCache, VueSfcPluginOptions } from '../src/rolldown'
 
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -29,12 +29,13 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
   })
 
   it('emits `.d.vue.ts` by default and no `.vue.d.ts`', async () => {
+    const pluginOptions: VueSfcPluginOptions = { srcDir: 'src', cwd: root }
     await build({
       cwd: root,
       entry: ['src/index.ts'],
       outDir: 'dist-default',
       logLevel: 'silent',
-      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: root })],
+      plugins: [vueSfcPlugin(pluginOptions)],
     })
     const files = await readdir(join(root, 'dist-default'))
     expect(files).toContain('Hello.vue')
