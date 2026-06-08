@@ -17,7 +17,7 @@ catalogs:
     '@antfu/eslint-config': 9.0.0
     '@babel/types': 7.29.0
     '@types/node': 24.12.4
-    '@vitest/coverage-v8': 4.1.7
+    '@vitest/coverage-v8': 4.1.8
     '@volar/typescript': 2.4.28
     '@vue/compiler-dom': 3.5.34
     '@vue/compiler-sfc': 3.5.34
@@ -33,7 +33,7 @@ catalogs:
     simple-git-hooks: 2.13.1
     tsdown: 0.22.0
     typescript: 6.0.3
-    vitest: 4.1.7
+    vitest: 4.1.8
     vue-tsc: 3.3.1
   peer:
     '@vue/compiler-core': 3.5.34
