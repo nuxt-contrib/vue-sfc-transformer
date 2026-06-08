@@ -10,23 +10,12 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./mkdist": "./dist/mkdist.mjs",
-    "./rolldown": "./dist/rolldown.mjs"
+    "./rolldown": "./dist/rolldown.mjs",
+    "./package.json": "./package.json"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
-  "typesVersions": {
-    "*": {
-      ".": [
-        "./dist/index.d.mts"
-      ],
-      "mkdist": [
-        "./dist/mkdist.d.mts"
-      ],
-      "rolldown": [
-        "./dist/rolldown.d.mts"
-      ]
-    }
-  },
+  "types": "./dist/index.d.mts",
   "files": [
     "dist"
   ],
@@ -34,7 +23,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "unbuild",
+    "build": "tsdown",
     "dev": "vitest dev",
     "lint": "eslint .",
     "prepare": "simple-git-hooks",
@@ -95,7 +84,6 @@
     "simple-git-hooks": "catalog:dev",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
-    "unbuild": "catalog:dev",
     "vitest": "catalog:dev",
     "vue": "catalog:peer",
     "vue-tsc": "catalog:dev"
