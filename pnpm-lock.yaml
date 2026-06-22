@@ -10,8 +10,8 @@ catalogs:
       specifier: 9.0.0
       version: 9.0.0
     '@babel/types':
-      specifier: 7.29.7
-      version: 7.29.7
+      specifier: 8.0.0
+      version: 8.0.0
     '@types/node':
       specifier: 24.13.2
       version: 24.13.2
@@ -78,8 +78,8 @@ catalogs:
       version: 3.5.38
   prod:
     '@babel/parser':
-      specifier: ^7.27.0
-      version: 7.29.7
+      specifier: ^8.0.0
+      version: 8.0.0
     pathe:
       specifier: ^2.0.3
       version: 2.0.3
@@ -97,7 +97,7 @@ importers:
     dependencies:
       '@babel/parser':
         specifier: catalog:prod
-        version: 7.29.7
+        version: 8.0.0
       pathe:
         specifier: catalog:prod
         version: 2.0.3
@@ -110,7 +110,7 @@ importers:
         version: 9.0.0(@typescript-eslint/rule-tester@8.59.4(eslint@10.5.0(jiti@2.7.0))(typescript@6.0.3))(@typescript-eslint/typescript-estree@8.59.4(typescript@6.0.3))(@typescript-eslint/utils@8.59.4(eslint@10.5.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.38)(eslint@10.5.0(jiti@2.7.0))(typescript@6.0.3)(vitest@4.1.9)
       '@babel/types':
         specifier: catalog:dev
-        version: 7.29.7
+        version: 8.0.0
       '@types/node':
         specifier: catalog:dev
         version: 24.13.2
