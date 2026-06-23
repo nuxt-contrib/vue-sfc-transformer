@@ -74,6 +74,9 @@ describe('transform typescript template', () => {
         };
         b()" />"
     `)
+    expect(
+      await fixture(`<input @keydown.delete="handleDelete($event as KeyboardEvent)" />`),
+    ).toEqual(`<input @keydown.delete="handleDelete($event)" />`)
   })
 
   it('v-slot', async () => {
