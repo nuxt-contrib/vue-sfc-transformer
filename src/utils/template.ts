@@ -372,47 +372,50 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
   const standalone = orders.filter(({ handler }) => handler.standalone)
 
   try {
-    // transform all snippets in a single file
-    const batchInputSplitter = generateSnippetSplitter()
-    const batchInput = batch
-      .map(({ nodes, handler }) => handler.prepare(nodes[0], id))
-      .join(batchInputSplitter)
+    await Promise.all([
+      transformSnippetBatch(batch, false),
+      transformSnippetBatch(standalone, true),
+    ])
 
-    const batchOutput = await transform(batchInput)
-    const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
-
-    if (lines.length !== batch.length) {
-      throw new Error('[vue-sfc-transform] Syntax Error')
-    }
-
-    for (let i = 0; i < batch.length; i++) {
-      const line = lines[i]!
-      const { id, handler, nodes } = batch[i]!
-
-      const res = handler.parse(line, id)
-      if (!res) {
-        continue
-      }
-
-      for (const node of nodes) {
-        resultMap.set(node, res)
-      }
-    }
-
-    // transform standalone snippets
-    await Promise.all(standalone.map(async ({ id, handler, nodes }) => {
-      const prepared = handler.prepare(nodes[0], id)
-      const line = await transform(prepared)
-
-      const res = handler.parse(line.trim(), id)
-      if (!res) {
+    async function transformSnippetBatch(items: typeof orders, scoped: boolean) {
+      if (items.length === 0) {
         return
       }
 
-      for (const node of nodes) {
-        resultMap.set(node, res)
+      const batchInputSplitter = generateSnippetSplitter()
+      const batchInput = items
+        .map(({ id, nodes, handler }) => {
+          const prepared = handler.prepare(nodes[0], id)
+          return scoped ? `{\n${prepared}\n}` : prepared
+        })
+        .join(batchInputSplitter)
+
+      const batchOutput = await transform(batchInput)
+      const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
+
+      if (lines.length !== items.length) {
+        throw new Error('[vue-sfc-transform] Syntax Error')
       }
-    }))
+
+      for (let i = 0; i < items.length; i++) {
+        let line = lines[i]!
+        const { id, handler, nodes } = items[i]!
+        if (scoped) {
+          line = line.startsWith('{') && line.endsWith('}')
+            ? line.slice(1, -1).trim()
+            : ''
+        }
+
+        const res = handler.parse(line, id)
+        if (!res) {
+          continue
+        }
+
+        for (const node of nodes) {
+          resultMap.set(node, res)
+        }
+      }
+    }
   }
   catch (error) {
     throw new Error('[vue-sfc-transform] Error parsing TypeScript expression in template', { cause: error })
