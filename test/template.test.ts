@@ -74,6 +74,9 @@ describe('transform typescript template', () => {
         };
         b()" />"
     `)
+    expect(
+      await fixture(`<input @keydown.delete="handleDelete($event as KeyboardEvent)" />`),
+    ).toEqual(`<input @keydown.delete="handleDelete($event)" />`)
   })
 
   it('v-slot', async () => {
@@ -91,6 +94,39 @@ describe('transform typescript template', () => {
         `<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>`,
       ),
     ).toMatchInlineSnapshot(`"<MyComponent v-slot="{ remaining, duration }">{{ remaining }}</MyComponent>"`)
+  })
+
+  it('batches destructuring expressions with overlapping bindings', async () => {
+    const src = [
+      `<MyComponent>`,
+      `<template #header="{ item = {} as Item, index = 0 as number }">{{ item }}</template>`,
+      `<template #default="{ item = {} as Item, index = 1 as number }">{{ index }}</template>`,
+      `<template #footer="{ item = {} as Item }">{{ item }}</template>`,
+      `</MyComponent>`,
+    ].join('')
+    const requireFromVue = createRequire(resolveModulePath('vue'))
+    const { parse } = requireFromVue('@vue/compiler-dom') as typeof import('@vue/compiler-dom')
+    let transformCalls = 0
+
+    const result = await transpileVueTemplate(
+      src,
+      parse(src, { parseMode: 'base' }),
+      0,
+      async (code) => {
+        transformCalls += 1
+        const res = await transform(code, { loader: 'ts', target: 'esnext' })
+        return res.code
+      },
+    )
+
+    expect(transformCalls).toBe(2)
+    expect(result).toBe([
+      `<MyComponent>`,
+      `<template #header="{ item = {}, index = 0 }">{{ item }}</template>`,
+      `<template #default="{ item = {}, index = 1 }">{{ index }}</template>`,
+      `<template #footer="{ item = {} }">{{ item }}</template>`,
+      `</MyComponent>`,
+    ].join(''))
   })
 
   it('compound expressions', async () => {
