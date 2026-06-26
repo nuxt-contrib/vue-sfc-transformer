@@ -115,7 +115,7 @@ function handleNode(
             ]
           : [node.exp],
         // node.arg,
-        ...node.modifiers,
+        // ..node.modifiers, #273
       ].filter(item => !!item)
       for (const child of nodes) {
         search(child)
