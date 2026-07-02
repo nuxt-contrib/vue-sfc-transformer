@@ -38,7 +38,7 @@ catalogs:
   peer:
     '@vue/compiler-core': 3.5.38
     esbuild: 0.28.1
-    vue: 3.5.38
+    vue: 3.5.39
   prod:
     '@babel/parser': ^7.27.0
     pathe: ^2.0.3
