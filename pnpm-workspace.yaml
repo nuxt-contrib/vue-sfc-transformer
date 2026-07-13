@@ -22,10 +22,10 @@ catalogs:
     '@vue/compiler-dom': 3.5.39
     '@vue/compiler-sfc': 3.5.39
     '@vue/language-core': 3.3.6
-    eslint: 10.6.0
+    eslint: 10.7.0
     exsolve: 1.1.0
     installed-check: 10.0.1
-    knip: 6.24.0
+    knip: 6.26.0
     lint-staged: 17.0.8
     mkdist: 2.4.1
     pkg-pr-new: 0.0.75
