@@ -42,6 +42,12 @@ export interface VueSfcPluginOptions {
   // `tsc` with `allowJs` (treating `Foo.vue` as `Foo.vue.js`). Off by
   // default; turn on for compatibility with consumers that resolve via the
   // legacy `.vue.d.ts` convention.
+  //
+  // Also changes how `.vue` imports from *other emitted declaration files*
+  // are rewritten: with this on, `import './Foo.vue'` in an emitted `.d.ts`
+  // becomes `import './Foo.vue.js'`, pointing dts bundlers (and plain
+  // `tsc`) at the `Foo.vue.d.ts` alias instead of a bare `.vue` specifier
+  // that resolves to the runtime SFC.
   emitLegacyDeclarationAlias?: boolean
 }
 
@@ -79,6 +85,9 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
     name: 'vue-sfc-transformer:vue-sfc',
     async resolveId(id, importer, resolveOptions) {
       if (/\.vue(?:\?|$)/.test(id)) {
+        if (pluginOptions.emitLegacyDeclarationAlias && importer && /\.d\.[cm]?ts$/.test(importer)) {
+          return { id: `${id}.js`, external: 'relative' }
+        }
         return { id, external: true }
       }
       // Type-augmentation side-effect imports: source files that only contain

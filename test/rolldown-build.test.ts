@@ -1,3 +1,4 @@
+import type { Plugin } from 'rolldown'
 import type { DtsCache, VueSfcPluginOptions } from '../src/rolldown'
 
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
@@ -8,6 +9,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { parse } from 'vue/compiler-sfc'
 
 import { createFileSystemDtsCache, vueSfcPlugin } from '../src/rolldown'
+
+async function callResolveId(plugin: Required<Pick<Plugin, 'resolveId'>>, id: string, importer: string) {
+  return (plugin.resolveId as (this: any, id: string, importer: string, options: any) => unknown).call(
+    {},
+    id,
+    importer,
+    { isEntry: false },
+  )
+}
 
 const root = fileURLToPath(new URL('../node_modules/.tmp/rolldown-build', import.meta.url))
 
@@ -64,6 +74,30 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(files).toContain('Hello.vue')
     expect(files).toContain('Hello.d.vue.ts')
     expect(files).toContain('Hello.vue.d.ts')
+  })
+
+  it('rewrites `.vue` specifiers from declaration-file importers to `.vue.js` when `emitLegacyDeclarationAlias` is set', async () => {
+    const plugin = vueSfcPlugin({ srcDir: 'src', cwd: root, emitLegacyDeclarationAlias: true }) as Required<Pick<Plugin, 'resolveId'>>
+    const resolved = await callResolveId(plugin, './Hello.vue', join(root, 'src/index.d.ts'))
+    expect(resolved).toEqual({ id: './Hello.vue.js', external: 'relative' })
+  })
+
+  it('leaves `.vue` specifiers from declaration-file importers bare when `emitLegacyDeclarationAlias` is off', async () => {
+    const plugin = vueSfcPlugin({ srcDir: 'src', cwd: root }) as Required<Pick<Plugin, 'resolveId'>>
+    const resolved = await callResolveId(plugin, './Hello.vue', join(root, 'src/index.d.ts'))
+    expect(resolved).toEqual({ id: './Hello.vue', external: true })
+  })
+
+  it('leaves `.vue` specifiers from non-declaration-file importers bare even when `emitLegacyDeclarationAlias` is set', async () => {
+    const plugin = vueSfcPlugin({ srcDir: 'src', cwd: root, emitLegacyDeclarationAlias: true }) as Required<Pick<Plugin, 'resolveId'>>
+    const resolved = await callResolveId(plugin, './Hello.vue', join(root, 'src/index.ts'))
+    expect(resolved).toEqual({ id: './Hello.vue', external: true })
+  })
+
+  it('rewrites `.vue` specifiers from `.d.mts` / `.d.cts` importers too', async () => {
+    const plugin = vueSfcPlugin({ srcDir: 'src', cwd: root, emitLegacyDeclarationAlias: true }) as Required<Pick<Plugin, 'resolveId'>>
+    expect(await callResolveId(plugin, './Hello.vue', join(root, 'src/index.d.mts'))).toEqual({ id: './Hello.vue.js', external: 'relative' })
+    expect(await callResolveId(plugin, './Hello.vue', join(root, 'src/index.d.cts'))).toEqual({ id: './Hello.vue.js', external: 'relative' })
   })
 
   it('populates the default fs cache under `<cwd>/node_modules/.cache/vue-sfc-dts/`', async () => {
