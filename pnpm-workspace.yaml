@@ -10,33 +10,33 @@ trustPolicyExclude:
 packages:
   - playground
 overrides:
-  '@vue/compiler-core': 3.5.40
+  '@vue/compiler-core': 3.5.41
   vue-sfc-transformer: 'link:.'
 catalogs:
   dev:
     '@antfu/eslint-config': 9.2.0
-    '@babel/types': 7.29.7
+    '@babel/types': 7.29.8
     '@types/node': 24.13.3
     '@vitest/coverage-v8': 4.1.10
     '@volar/typescript': 2.4.28
-    '@vue/compiler-dom': 3.5.40
-    '@vue/compiler-sfc': 3.5.40
-    '@vue/language-core': 3.3.8
+    '@vue/compiler-dom': 3.5.41
+    '@vue/compiler-sfc': 3.5.41
+    '@vue/language-core': 3.3.9
     eslint: 10.8.0
-    exsolve: 1.1.0
+    exsolve: 1.1.1
     installed-check: 10.0.1
     knip: 6.29.0
-    lint-staged: 17.2.0
+    lint-staged: 17.3.0
     mkdist: 2.4.1
-    pkg-pr-new: 0.0.80
-    rolldown: 1.2.0
+    pkg-pr-new: 0.0.87
+    rolldown: 1.2.3
     simple-git-hooks: 2.13.1
     tsdown: 0.22.14
     typescript: 6.0.3
     vitest: 4.1.10
-    vue-tsc: 3.3.8
+    vue-tsc: 3.3.9
   peer:
-    '@vue/compiler-core': 3.5.40
+    '@vue/compiler-core': 3.5.41
     esbuild: 0.28.1
     vue: 3.5.40
   prod:
