@@ -205,6 +205,38 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(dts).toContain('#button')
   })
 
+  // Bug: script blocks are transpiled with oxc's default tsc-style import
+  // elision, which drops any import lacking a value reference in the script
+  // text. Imports used only in the template (components, directives) have no
+  // such reference - the transform never sees the template - so the emitted
+  // SFC silently loses them and `<Child />` degrades to a runtime
+  // `resolveComponent("Child")` lookup that fails.
+  it('preserves imports that are referenced only in the template', async () => {
+    const templateOnlyRoot = join(root, 'template-only-import')
+    await rm(templateOnlyRoot, { force: true, recursive: true })
+    await mkdir(join(templateOnlyRoot, 'src'), { recursive: true })
+    await writeFile(join(templateOnlyRoot, 'src/index.ts'), 'export const x = 1\n')
+    await writeFile(join(templateOnlyRoot, 'src/Child.vue'), '<template><span>child</span></template>\n')
+    await writeFile(join(templateOnlyRoot, 'src/Parent.vue'), [
+      '<script setup lang="ts">',
+      `import Child from './Child.vue'`,
+      '</script>',
+      '<template><Child /></template>',
+    ].join('\n'))
+
+    await build({
+      cwd: templateOnlyRoot,
+      entry: ['src/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: templateOnlyRoot, cache: false })],
+    })
+
+    const output = await readFile(join(templateOnlyRoot, 'dist/Parent.vue'), 'utf8')
+    const { descriptor } = parse(output, { filename: 'Parent.vue' })
+    expect(descriptor.scriptSetup?.content).toContain('import Child from "./Child.vue"')
+  })
+
   // Bug: attribute values are serialised with `key="${value}"` without
   // escaping double quotes in `value`. A single-quoted attribute like
   // `note='says "hi"'` round-trips as `note="says "hi""` - invalid XML,
