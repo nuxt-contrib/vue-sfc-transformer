@@ -205,6 +205,38 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(dts).toContain('#button')
   })
 
+  // Bug: when a script block's only module syntax is elided as type-only,
+  // oxc appends a synthesized `export {}` to preserve module-ness (standard
+  // tsc emit semantics). SFC blocks are not module files: inside
+  // `<script setup>` the marker makes every consumer build fail with
+  // `<script setup> cannot contain ES module exports`.
+  it('does not emit a synthesized `export {}` when every import is type-only', async () => {
+    const typeOnlyRoot = join(root, 'type-only-import')
+    await rm(typeOnlyRoot, { force: true, recursive: true })
+    await mkdir(join(typeOnlyRoot, 'src'), { recursive: true })
+    await writeFile(join(typeOnlyRoot, 'src/index.ts'), 'export const x = 1\n')
+    await writeFile(join(typeOnlyRoot, 'src/TypeOnly.vue'), [
+      '<script setup lang="ts">',
+      `import type { CSSProperties } from 'vue'`,
+      `const style: CSSProperties = { color: 'red' }`,
+      '</script>',
+      '<template><div :style="style">styled</div></template>',
+    ].join('\n'))
+
+    await build({
+      cwd: typeOnlyRoot,
+      entry: ['src/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: typeOnlyRoot, cache: false })],
+    })
+
+    const output = await readFile(join(typeOnlyRoot, 'dist/TypeOnly.vue'), 'utf8')
+    const { descriptor } = parse(output, { filename: 'TypeOnly.vue' })
+    expect(descriptor.scriptSetup?.content).not.toContain('export {}')
+    expect(descriptor.scriptSetup?.content).toContain('const style = { color: "red" }')
+  })
+
   // Bug: attribute values are serialised with `key="${value}"` without
   // escaping double quotes in `value`. A single-quoted attribute like
   // `note='says "hi"'` round-trips as `note="says "hi""` - invalid XML,
