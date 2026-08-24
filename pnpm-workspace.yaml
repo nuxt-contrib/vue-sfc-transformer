@@ -22,7 +22,7 @@ catalogs:
     '@vue/compiler-dom': 3.5.41
     '@vue/compiler-sfc': 3.5.41
     '@vue/language-core': 3.3.11
-    eslint: 10.8.1
+    eslint: 10.9.0
     exsolve: 1.1.1
     installed-check: 11.0.0
     knip: 6.32.2
