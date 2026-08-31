@@ -55,10 +55,8 @@ async function transpileScript(code: string, filename = '__sfc.ts'): Promise<str
   const result = await transform(filename, code, {
     lang: 'ts',
     sourcemap: false,
-    // The transform only ever sees the script block, so usage-based import
-    // elision would drop imports referenced only in the template. Keep
-    // everything except explicit `import type` (`verbatimModuleSyntax`
-    // semantics, matching the esbuild options in the mkdist loader).
+    // Usage-based elision would drop imports referenced only in the template,
+    // which this transform never sees.
     typescript: { onlyRemoveTypeImports: true },
   })
   if (result.errors.length) {

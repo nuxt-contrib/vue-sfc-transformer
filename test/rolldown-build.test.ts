@@ -205,9 +205,6 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(dts).toContain('#button')
   })
 
-  // Bug: the script transform never sees the template, so usage-based import
-  // elision dropped component imports and `<Child />` degraded to a failing
-  // runtime `resolveComponent("Child")` lookup.
   it('preserves imports that are referenced only in the template', async () => {
     const templateOnlyRoot = join(root, 'template-only-import')
     await rm(templateOnlyRoot, { force: true, recursive: true })
