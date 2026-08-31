@@ -52,7 +52,13 @@ export interface VueSfcPluginOptions {
 }
 
 async function transpileScript(code: string, filename = '__sfc.ts'): Promise<string> {
-  const result = await transform(filename, code, { lang: 'ts', sourcemap: false })
+  const result = await transform(filename, code, {
+    lang: 'ts',
+    sourcemap: false,
+    // Usage-based elision would drop imports referenced only in the template,
+    // which this transform never sees.
+    typescript: { onlyRemoveTypeImports: true },
+  })
   if (result.errors.length) {
     throw new AggregateError(result.errors, `[vue-sfc-transformer] failed to transpile script in ${filename}`)
   }

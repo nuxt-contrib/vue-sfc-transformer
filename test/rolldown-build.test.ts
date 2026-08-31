@@ -205,6 +205,36 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(dts).toContain('#button')
   })
 
+  it('preserves imports that are referenced only in the template', async () => {
+    const templateOnlyRoot = join(root, 'template-only-import')
+    await rm(templateOnlyRoot, { force: true, recursive: true })
+    await mkdir(join(templateOnlyRoot, 'src'), { recursive: true })
+    await writeFile(join(templateOnlyRoot, 'src/index.ts'), 'export const x = 1\n')
+    await writeFile(join(templateOnlyRoot, 'src/Child.vue'), '<template><span>child</span></template>\n')
+    await writeFile(join(templateOnlyRoot, 'src/types.ts'), 'export interface ChildProps { label: string }\n')
+    await writeFile(join(templateOnlyRoot, 'src/Parent.vue'), [
+      '<script setup lang="ts">',
+      `import Child from './Child.vue'`,
+      `import type { ChildProps } from './types'`,
+      'defineProps<ChildProps>()',
+      '</script>',
+      '<template><Child /></template>',
+    ].join('\n'))
+
+    await build({
+      cwd: templateOnlyRoot,
+      entry: ['src/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: templateOnlyRoot, cache: false })],
+    })
+
+    const output = await readFile(join(templateOnlyRoot, 'dist/Parent.vue'), 'utf8')
+    const { descriptor } = parse(output, { filename: 'Parent.vue' })
+    expect(descriptor.scriptSetup?.content).toContain('import Child from "./Child.vue"')
+    expect(descriptor.scriptSetup?.content).not.toContain('./types')
+  })
+
   it('does not emit a synthesized `export {}` when every import is type-only', async () => {
     const typeOnlyRoot = join(root, 'type-only-import')
     await rm(typeOnlyRoot, { force: true, recursive: true })
