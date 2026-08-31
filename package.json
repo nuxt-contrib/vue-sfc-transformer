@@ -62,7 +62,6 @@
     }
   },
   "dependencies": {
-    "@babel/parser": "catalog:prod",
     "pathe": "catalog:prod",
     "tinyglobby": "catalog:prod"
   },

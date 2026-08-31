@@ -1,8 +1,7 @@
 import type { ArrayExpression, CallExpression, Expression, Identifier, Node, ObjectExpression, ObjectProperty, StringLiteral } from '@babel/types'
 import type { SFCDescriptor, SFCScriptBlock, SimpleTypeResolveContext } from 'vue/compiler-sfc'
 
-import { parse } from '@babel/parser'
-import { extractRuntimeEmits, extractRuntimeProps, inferRuntimeType, MagicString } from 'vue/compiler-sfc'
+import { babelParse, extractRuntimeEmits, extractRuntimeProps, inferRuntimeType, MagicString } from 'vue/compiler-sfc'
 
 interface Context {
   ctx: SimpleTypeResolveContext
@@ -246,7 +245,7 @@ function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [Str
 
 async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string): Promise<Context> {
   const helper = new Set<string>()
-  const ast = parse(`${scriptSetup.content}\n${script?.content}`, {
+  const ast = babelParse(`${scriptSetup.content}\n${script?.content}`, {
     sourceType: 'module',
     plugins: (['tsx', 'jsx'] as Array<string | undefined>).includes(scriptSetup.lang)
       ? ['typescript', 'jsx']

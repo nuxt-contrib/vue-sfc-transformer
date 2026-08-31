@@ -77,9 +77,6 @@ catalogs:
       specifier: 3.5.42
       version: 3.5.42
   prod:
-    '@babel/parser':
-      specifier: ^7.27.0
-      version: 7.29.8
     pathe:
       specifier: ^2.0.3
       version: 2.0.3
@@ -95,9 +92,6 @@ importers:
 
   .:
     dependencies:
-      '@babel/parser':
-        specifier: catalog:prod
-        version: 7.29.8
       pathe:
         specifier: catalog:prod
         version: 2.0.3
