@@ -20,9 +20,10 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineProps({
-        msg: { type: String, required: true }
-      });
+      defineProps({ msg: {
+      	type: String,
+      	required: true
+      } });
       </script>
       "
     `)
@@ -32,9 +33,10 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const props = defineProps({
-        msg: { type: String, required: true }
-      });
+      const props = defineProps({ msg: {
+      	type: String,
+      	required: true
+      } });
       </script>
       "
     `)
@@ -44,9 +46,10 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const { msg } = defineProps({
-        msg: { type: String, required: true }
-      });
+      const { msg } = defineProps({ msg: {
+      	type: String,
+      	required: true
+      } });
       </script>
       "
     `)
@@ -56,9 +59,10 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const { msg = "hello" } = defineProps({
-        msg: { type: String, required: false }
-      });
+      const { msg = "hello" } = defineProps({ msg: {
+      	type: String,
+      	required: false
+      } });
       </script>
       "
     `)
@@ -71,9 +75,11 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const props = defineProps({
-        msg: { type: String, required: false, default: "hi" }
-      });
+      const props = defineProps({ msg: {
+      	type: String,
+      	required: false,
+      	default: "hi"
+      } });
       </script>
       "
     `)
@@ -83,9 +89,11 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineProps({
-        msg: { type: String, required: false, default: "hi" }
-      });
+      defineProps({ msg: {
+      	type: String,
+      	required: false,
+      	default: "hi"
+      } });
       </script>
       "
     `)
@@ -179,7 +187,10 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel({ type: String, ...{ required: true } });
+      defineModel({
+      	type: String,
+      	...{ required: true }
+      });
       </script>
       "
     `)
@@ -189,7 +200,10 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", { type: String, ...{ required: true } });
+      defineModel("msg", {
+      	type: String,
+      	...{ required: true }
+      });
       </script>
       "
     `)

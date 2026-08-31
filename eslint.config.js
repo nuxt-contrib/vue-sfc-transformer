@@ -6,4 +6,10 @@ export default antfu().append({
     'antfu/no-top-level-await': 'off',
     'no-console': 'off',
   },
+}, {
+  files: ['test/**'],
+  rules: {
+    // snapshots contain rolldown output, which is tab-indented
+    'style/no-tabs': 'off',
+  },
 })
