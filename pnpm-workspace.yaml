@@ -15,7 +15,7 @@ overrides:
 catalogs:
   dev:
     '@antfu/eslint-config': 9.3.0
-    '@babel/types': 7.29.8
+    '@babel/types': 8.0.4
     '@types/node': 24.13.3
     '@vitest/coverage-v8': 4.1.11
     '@volar/typescript': 2.4.28
