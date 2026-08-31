@@ -62,7 +62,6 @@
     }
   },
   "dependencies": {
-    "pathe": "catalog:prod",
     "tinyglobby": "catalog:prod"
   },
   "devDependencies": {

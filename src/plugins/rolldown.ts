@@ -4,7 +4,6 @@ import type { DtsCache } from '../dts/cache'
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
 
-import { isAbsolute, relative, resolve } from 'pathe'
 import { transform } from 'rolldown/utils'
 import { glob } from 'tinyglobby'
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
@@ -12,6 +11,7 @@ import { parse } from 'vue/compiler-sfc'
 
 import { emitVueDeclarations } from '../dts/emit'
 import { escapeSfcAttrValue } from '../utils/attrs'
+import { isAbsolute, relative, resolve } from '../utils/path'
 
 export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used

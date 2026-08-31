@@ -2,8 +2,8 @@ import type { DtsCache } from '../src/dts/cache'
 import type { EmitVueDeclarationsOptions, VueTscRunner } from '../src/dts/emit'
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { join } from 'pathe'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createFileSystemDtsCache } from '../src/dts/cache'

@@ -1,6 +1,6 @@
 import { access, mkdir, readdir, rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { join } from 'pathe'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createFileSystemDtsCache, hashSfc } from '../src/dts/cache'

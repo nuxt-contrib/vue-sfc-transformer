@@ -2,9 +2,9 @@ import type { DtsCache } from './cache'
 
 import * as volarTs from '@volar/typescript'
 import * as vueLanguageCore from '@vue/language-core'
-import { join, normalize } from 'pathe'
 import ts from 'typescript'
 
+import { join, normalize } from '../utils/path'
 import { createFileSystemDtsCache, hashSfc } from './cache'
 import { readTsconfigJson } from './tsconfig'
 import { getAutoCacheVersion } from './version'
