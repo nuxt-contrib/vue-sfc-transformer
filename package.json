@@ -51,6 +51,9 @@
     "@vue/language-core": {
       "optional": true
     },
+    "esbuild": {
+      "optional": true
+    },
     "rolldown": {
       "optional": true
     },
