@@ -64,7 +64,9 @@ async function transpileScript(code: string, filename = '__sfc.ts'): Promise<str
   if (result.errors.length) {
     throw new AggregateError(result.errors, `[vue-sfc-transformer] failed to transpile script in ${filename}`)
   }
-  return result.code ?? code
+  // oxc appends `export {}` when every import is elided as type-only; it is
+  // invalid in `<script setup>`, and is emitted before any trailing trivia.
+  return (result.code ?? code).replace(/^export \{\};?[ \t]*\r?\n?/m, '')
 }
 
 // Transform `.vue` files: strip TS from <script>/<script setup> (lowering
