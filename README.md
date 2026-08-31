@@ -74,6 +74,8 @@ import { vueLoader } from 'vue-sfc-transformer/mkdist'
 
 `vue-sfc-transformer/rolldown` ships a [rolldown](https://github.com/rolldown/rolldown) plugin that transpiles `<script lang="ts">` and template expressions, then emits a `<name>.d.vue.ts` declaration for each SFC under `srcDir`. That's the form `vue-tsc` / `@vue/language-core` / `@volar/typescript` (since 2.4.19) resolve for `import './Foo.vue'`. Pass `emitLegacyDeclarationAlias: true` to also emit the older `<name>.vue.d.ts` form, which plain `tsc` resolves but vue-tsc does not.
 
+Script blocks are transpiled with `verbatimModuleSyntax` semantics: only explicit `import type` statements and inline `type` specifiers are removed. A type-only import written without the `type` keyword (`import { Props } from './types'`) survives into the emitted SFC as a runtime import and will fail to resolve at runtime; make sure to write `import type` for types.
+
 Works with anything that runs rolldown plugins: [tsdown](https://github.com/rolldown/tsdown), [obuild](https://github.com/unjs/obuild) or rolldown directly.
 
 ```sh
