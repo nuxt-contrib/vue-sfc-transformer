@@ -205,11 +205,6 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(dts).toContain('#button')
   })
 
-  // Bug: when a script block's only module syntax is elided as type-only,
-  // oxc appends a synthesized `export {}` to preserve module-ness (standard
-  // tsc emit semantics). SFC blocks are not module files: inside
-  // `<script setup>` the marker makes every consumer build fail with
-  // `<script setup> cannot contain ES module exports`.
   it('does not emit a synthesized `export {}` when every import is type-only', async () => {
     const typeOnlyRoot = join(root, 'type-only-import')
     await rm(typeOnlyRoot, { force: true, recursive: true })
@@ -221,6 +216,24 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
       `const style: CSSProperties = { color: 'red' }`,
       '</script>',
       '<template><div :style="style">styled</div></template>',
+    ].join('\n'))
+    await writeFile(join(typeOnlyRoot, 'src/TypeOnlyTrailingComment.vue'), [
+      '<script setup lang="ts">',
+      `import type { CSSProperties } from 'vue'`,
+      `const style: CSSProperties = { color: 'red' }`,
+      '// trailing comment',
+      '</script>',
+      '<template><div :style="style">styled</div></template>',
+    ].join('\n'))
+    await writeFile(join(typeOnlyRoot, 'src/TypeOnlyScript.vue'), [
+      '<script lang="ts">',
+      `import type { CSSProperties } from 'vue'`,
+      `const style: CSSProperties = { color: 'red' }`,
+      '</script>',
+      '<script setup lang="ts">',
+      `const bound: CSSProperties = style`,
+      '</script>',
+      '<template><div :style="bound">styled</div></template>',
     ].join('\n'))
 
     await build({
@@ -235,6 +248,16 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     const { descriptor } = parse(output, { filename: 'TypeOnly.vue' })
     expect(descriptor.scriptSetup?.content).not.toContain('export {}')
     expect(descriptor.scriptSetup?.content).toContain('const style = { color: "red" }')
+
+    const withComment = await readFile(join(typeOnlyRoot, 'dist/TypeOnlyTrailingComment.vue'), 'utf8')
+    const commented = parse(withComment, { filename: 'TypeOnlyTrailingComment.vue' }).descriptor
+    expect(commented.scriptSetup?.content).not.toContain('export {}')
+    expect(commented.scriptSetup?.content).toContain('// trailing comment')
+
+    const scriptOutput = await readFile(join(typeOnlyRoot, 'dist/TypeOnlyScript.vue'), 'utf8')
+    const script = parse(scriptOutput, { filename: 'TypeOnlyScript.vue' }).descriptor
+    expect(script.script?.content).not.toContain('export {}')
+    expect(script.script?.content).toContain('const style = { color: "red" }')
   })
 
   // Bug: attribute values are serialised with `key="${value}"` without
