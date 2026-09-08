@@ -11,7 +11,7 @@ packages:
   - playground
 overrides:
   '@vue/compiler-core': 3.5.42
-  vue-sfc-transformer: 'link:.'
+  vue-sfc-transformer: 'workspace:*'
 catalogs:
   dev:
     '@antfu/eslint-config': 9.3.0
