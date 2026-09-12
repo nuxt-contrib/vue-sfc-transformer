@@ -243,11 +243,10 @@ describe('transform typescript script setup', () => {
     const output = await fixture(src)
     expect(output).not.toContain('as string')
     expect(output).toMatchInlineSnapshot(`
-      "<script lang="ts"></script>
-
-      <template>
-        <div>{{ (msg as string) }}</div>
-      </template>"
+      "<template>
+        <div>{{ msg }}</div>
+      </template>
+      "
     `)
   })
 
