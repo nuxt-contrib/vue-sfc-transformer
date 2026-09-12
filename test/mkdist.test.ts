@@ -233,6 +233,23 @@ describe('transform typescript script setup', () => {
     `)
   })
 
+  it('applies an empty ts script lang to the template', async () => {
+    const src = `<script lang="ts"></script>
+
+<template>
+  <div>{{ (msg as string) }}</div>
+</template>`
+
+    const output = await fixture(src)
+    expect(output).not.toContain('as string')
+    expect(output).toMatchInlineSnapshot(`
+      "<template>
+        <div>{{ msg }}</div>
+      </template>
+      "
+    `)
+  })
+
   it('generates declaration', { timeout: 50_000 }, async () => {
     const src = `
       <template>

@@ -12,6 +12,7 @@ import { parse } from 'vue/compiler-sfc'
 import { emitVueDeclarations } from '../dts/emit'
 import { escapeSfcAttrValue } from '../utils/attrs'
 import { isAbsolute, relative, resolve } from '../utils/path'
+import { getSfcScriptLang } from '../utils/script-lang'
 
 export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
@@ -186,7 +187,8 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
     return { runtime: input, errors }
   }
 
-  const isTs = [sfc.descriptor.script, sfc.descriptor.scriptSetup].some(b => b?.lang === 'ts')
+  const sfcScriptLang = getSfcScriptLang(input, sfc.descriptor.script, sfc.descriptor.scriptSetup)
+  const isTs = sfcScriptLang === 'ts'
 
   const blocks: Array<{ type: string, attrs: Record<string, string | true>, content: string, offset: number }> = []
 

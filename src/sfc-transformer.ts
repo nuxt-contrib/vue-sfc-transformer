@@ -2,6 +2,7 @@ import type { SFCBlock } from 'vue/compiler-sfc'
 import type { BlockLoader, BlockLoaderContext, LoaderFile, LoadFileContext } from './block-loader/types'
 import { parse } from 'vue/compiler-sfc'
 import { escapeSfcAttrValue } from './utils/attrs'
+import { getSfcScriptLang } from './utils/script-lang'
 import { preTranspileScriptSetup } from './utils/script-setup'
 import { cleanupBreakLine } from './utils/string'
 
@@ -49,9 +50,8 @@ export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): Vue
     }
 
     // we need to remove typescript from template block if the block is typescript
-    const isTs = [sfc.descriptor.script, sfc.descriptor.scriptSetup].some(
-      block => block?.lang === 'ts',
-    )
+    const sfcScriptLang = getSfcScriptLang(input, sfc.descriptor.script, sfc.descriptor.scriptSetup)
+    const isTs = sfcScriptLang === 'ts'
 
     const blocks: SFCBlock[] = [
       ...sfc.descriptor.styles,
