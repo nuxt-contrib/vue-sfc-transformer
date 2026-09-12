@@ -215,7 +215,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
   if (sfc.descriptor.template) {
     const block = sfc.descriptor.template
     const content = isTs && block.ast
-      ? await transpileVueTemplate(block.content, block.ast, block.loc.start.offset, async code => transpileScript(code))
+      ? await transpileVueTemplate(block.content, block.ast, block.loc.start.offset)
       : block.content
     blocks.push({
       type: 'template',
