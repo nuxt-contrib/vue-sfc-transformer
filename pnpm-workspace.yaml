@@ -1,10 +1,21 @@
 catalogMode: prefer
+minimumReleaseAgeExclude:
+  - petrea@0.4.2
+  - '@petrea/binding-darwin-arm64@0.4.2'
+  - '@petrea/binding-darwin-x64@0.4.2'
+  - '@petrea/binding-linux-arm64-gnu@0.4.2'
+  - '@petrea/binding-linux-arm64-musl@0.4.2'
+  - '@petrea/binding-linux-x64-gnu@0.4.2'
+  - '@petrea/binding-linux-x64-musl@0.4.2'
+  - '@petrea/binding-wasm32-wasip1@0.4.2'
+  - '@petrea/binding-win32-arm64-msvc@0.4.2'
+  - '@petrea/binding-win32-x64-msvc@0.4.2'
 shellEmulator: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - '@octokit/action@6.1.0'
   - '@octokit/endpoint@9.0.6'
-  - '@octokit/plugin-paginate-rest@9.2.2'
+  - '@octokit/plugin-paginate-rest@9.2.0'
   - chokidar@4.0.3
   - undici@5.29.0 || 6.22.0
 packages:
@@ -40,6 +51,7 @@ catalogs:
     esbuild: 0.28.2
     vue: 3.5.42
   prod:
+    petrea: ^0.4.2
     tinyglobby: ^0.2.16
 
 allowBuilds:
