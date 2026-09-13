@@ -93,7 +93,7 @@ describe('transform typescript script setup', () => {
               const props = defineProps({
           locale: { type: Array, required: false }
         })
-              
+
       </script>"
     `)
   })
@@ -266,6 +266,29 @@ describe('transform typescript script setup', () => {
     const sfc = parse(script, { filename: 'test.vue', ignoreEmpty: true })
     const result = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
     expect(result.content).toContain('defineProps({})')
+  })
+
+  it('lowers TSX macros while preserving JSX and other type syntax', async () => {
+    const { descriptor } = parse(`<script setup lang="tsx">
+const props = defineProps<{ msg: string }>()
+const emit = defineEmits<{ change: [value: number] }>()
+const vnode = <div>{props.msg as string}</div>
+</script>`)
+    const result = await preTranspileScriptSetup(descriptor, 'test.vue')
+
+    expect(result.lang).toBe('tsx')
+    expect(result.content).toContain('msg: { type: String, required: true }')
+    expect(result.content).toContain('defineEmits(["change"])')
+    expect(result.content).toContain('<div>{props.msg as string}</div>')
+    expect(result.content).not.toMatch(/define(?:Props|Emits)</)
+  })
+
+  it('preserves a JSX script setup', async () => {
+    const { descriptor } = parse('<script setup lang="jsx">const vnode = <div>hi</div></script>')
+    const result = await preTranspileScriptSetup(descriptor, 'test.vue')
+
+    expect(result.lang).toBe('jsx')
+    expect(result.content).toBe('const vnode = <div>hi</div>')
   })
 
   async function fixture(src: string): Promise<string> {
