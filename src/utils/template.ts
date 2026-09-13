@@ -1,5 +1,6 @@
 import type { AttributeNode, DirectiveNode, ExpressionNode, ParentNode, RootNode, SourceLocation, TemplateChildNode, TextNode } from '@vue/compiler-dom'
 import { isFnExpressionBrowser as isFnExpression, isMemberExpressionBrowser as isMemberExpression } from '@vue/compiler-core'
+import { transpileSync } from 'petrea'
 import { MagicString } from 'vue/compiler-sfc'
 
 // copy from `@vue/compiler-dom`
@@ -143,7 +144,6 @@ export async function transpileVueTemplate(
   content: string,
   root: RootNode,
   offset = 0,
-  transform: (code: string) => Promise<string>,
 ): Promise<string> {
   const expressions: Expression[] = []
 
@@ -155,28 +155,9 @@ export async function transpileVueTemplate(
 
   const s = new MagicString(content)
 
-  const transformMap = await transformJsSnippets(expressions, transform)
+  const transformMap = transformJsSnippets(expressions)
   for (const item of expressions) {
     item.replacement = transformMap.get(item) ?? item.src
-
-    if (!shouldReplaceQuote(item)) {
-      continue
-    }
-
-    // the source should only have one of the quotes
-    const sourceQuote = getSourceQuote(
-      content,
-      item.loc.start.offset - offset,
-      item.loc.end.offset - offset,
-    )
-    if (sourceQuote !== null) {
-      const search = sourceQuote === `"` ? `'` : `"`
-      item.replacement = replaceQuote(
-        item.replacement,
-        search,
-        sourceQuote,
-      )
-    }
   }
 
   for (const item of expressions) {
@@ -190,50 +171,6 @@ export async function transpileVueTemplate(
   }
 
   return s.toString()
-}
-
-export function replaceQuote(code: string, target: string, replace: string): string {
-  let res = code
-
-  if (res.includes(target)) {
-    /**
-     * Due to the way Vue parses templates,
-     * the symbol of target would never appear in the code.
-     * We just need to replace the symbol of target.
-     *
-     * But for replace symbol exist in code, we need to escape it,
-     * because esbuild have removed the escape character.
-     */
-    res = res.replaceAll(replace, `\\${replace}`)
-    res = res.replaceAll(target, replace)
-  }
-
-  return res
-}
-
-function shouldReplaceQuote(expression: Expression): boolean {
-  if (!expression.src.includes(`'`) && !expression.src.includes(`"`)) {
-    return false
-  }
-
-  // skip the expression in the interpolation, it doesn't care about the quote
-  const secondLastTrack = expression.track.at(-2)
-  if (secondLastTrack?.type === NodeTypes.INTERPOLATION) {
-    return false
-  }
-
-  return true
-}
-
-function getSourceQuote(code: string, start: number, end: number): string | null {
-  const source = code.slice(start, end)
-  const quotes = ['"', '\'']
-  for (const quote of quotes) {
-    if (source.includes(quote)) {
-      return quote
-    }
-  }
-  return null
 }
 
 interface SnippetHandler {
@@ -346,7 +283,7 @@ function generateSnippetSplitter() {
   return `\nsplitter(${JSON.stringify(identify)});\n`
 }
 
-async function transformJsSnippets(expressions: Expression[], transform: (code: string) => Promise<string>): Promise<WeakMap<Expression, string>> {
+function transformJsSnippets(expressions: Expression[]): WeakMap<Expression, string> {
   const transformMap = new Map<string, { id: number, nodes: [Expression, ...Expression[]], handler: SnippetHandler }>()
 
   let id = 0
@@ -372,12 +309,10 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
   const standalone = orders.filter(({ handler }) => handler.standalone)
 
   try {
-    await Promise.all([
-      transformSnippetBatch(batch, false),
-      transformSnippetBatch(standalone, true),
-    ])
+    transformSnippetBatch(batch, false)
+    transformSnippetBatch(standalone, true)
 
-    async function transformSnippetBatch(items: typeof orders, scoped: boolean) {
+    function transformSnippetBatch(items: typeof orders, scoped: boolean) {
       if (items.length === 0) {
         return
       }
@@ -390,7 +325,7 @@ async function transformJsSnippets(expressions: Expression[], transform: (code: 
         })
         .join(batchInputSplitter)
 
-      const batchOutput = await transform(batchInput)
+      const batchOutput = transpileSync(batchInput)
       const lines = batchOutput.split(batchInputSplitter).map(l => l.trim()).filter(l => !!l)
 
       if (lines.length !== items.length) {

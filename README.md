@@ -19,12 +19,12 @@ npm install vue-sfc-transformer vue @vue/compiler-core
 pnpm install vue-sfc-transformer vue @vue/compiler-core
 ```
 
-A TypeScript transpiler is needed to strip types from script blocks and template expressions. `rolldown` and `esbuild` are both optional peer dependencies; install whichever suits your setup. The `mkdist` loader uses `rolldown/utils` when it is available, and `esbuild` otherwise (or when mkdist's `esbuild` options are set).
+TypeScript types in template expressions are stripped by `petrea` transpiler, which blanks them in place to preserve line and column positions.
+
+Script blocks in the `mkdist` loader are transpiled with an external transpiler when one is available — `rolldown` (preferred) or `esbuild`, both optional peers — and fall back to the bundled `petrea` transpiler when neither is installed. When mkdist's `esbuild` options are set, `esbuild` is preferred.
 
 ```js
 import { parse as parseSFC } from '@vue/compiler-sfc'
-import { transform } from 'rolldown/utils'
-
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
 
 const src = `
@@ -49,17 +49,9 @@ const templateBlockContents = await transpileVueTemplate(
   sfc.descriptor.template.content,
   sfc.descriptor.template.ast,
   sfc.descriptor.template.loc.start.offset,
-  async (code) => {
-    const res = await transform('__sfc.ts', code, {
-      lang: 'ts',
-      sourcemap: false,
-      typescript: { onlyRemoveTypeImports: true },
-    })
-    return res.code
-  },
 )
 console.log(templateBlockContents)
-// <div v-if="test" />
+//   <div v-if="test       " />
 
 const { content: scriptBlockContents } = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
 console.log(scriptBlockContents)
