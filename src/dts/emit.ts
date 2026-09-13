@@ -60,6 +60,8 @@ const runVueTsc: VueTscRunner = (files, options) => {
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
+    jsx: parsed.options.jsx ?? ts.JsxEmit.Preserve,
+    jsxImportSource: parsed.options.jsxImportSource ?? 'vue',
     ...(parsed.options.baseUrl !== undefined && { baseUrl: parsed.options.baseUrl }),
     ...(parsed.options.paths !== undefined && { paths: parsed.options.paths }),
     ...(parsed.options.pathsBasePath !== undefined && { pathsBasePath: parsed.options.pathsBasePath }),

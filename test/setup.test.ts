@@ -93,7 +93,7 @@ describe('transform typescript script setup', () => {
               const props = defineProps({
           locale: { type: Array, required: false }
         })
-
+              
       </script>"
     `)
   })
@@ -259,6 +259,24 @@ describe('transform typescript script setup', () => {
     `)
 
     await expect(fixture('<script setup lang="ts">defineModel("foo", "bar")</script>')).rejects.toThrow(`[vue-sfc-transformer] defineModel()'s second argument must be an object.`)
+  })
+
+  it('keeps JSX while lowering macros in tsx script setup', async () => {
+    expect(
+      await fixture(
+        `<script setup lang="tsx">const props = defineProps<{ msg: string }>()
+const vNode = <div class={props.msg}>{props.msg}</div>
+</script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup lang="tsx">
+      const props = defineProps({
+          msg: { type: String, required: true }
+        })
+      const vNode = <div class={props.msg}>{props.msg}</div>
+
+      </script>"
+    `)
   })
 
   it('handles edge cases in processDefineProps', async () => {
