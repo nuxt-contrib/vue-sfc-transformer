@@ -522,6 +522,26 @@ const vnode = <div>{props.msg as string}</div>
     expect(template?.content).not.toContain('as string')
   })
 
+  it('does not strip TypeScript from template expressions when the script is jsx', async () => {
+    // Mirrors @vue/compiler-sfc: template TS is enabled by `ts`/`tsx` scripts only.
+    const src = `<script setup lang="jsx">
+const vNode = <div>hello</div>
+</script>
+
+<template>
+  <div>{{ (msg as string) }}</div>
+</template>`
+
+    expect(await fixture(src)).toContain('as string')
+  })
+
+  it('rejects JSX inside template expressions (not a Vue feature)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(
+      fixture(`<template><div>{{ <span>hi</span> }}</div></template>`),
+    ).rejects.toThrow('[vue-sfc-transformer]')
+  })
+
   async function fixture(src: string): Promise<string> {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
