@@ -478,6 +478,50 @@ describe('transform typescript script setup', () => {
     await expect(fixture(src)).rejects.toThrow('[vue-sfc-transformer] Failed to load the script block in')
   })
 
+  it('preserves JSX and its script language', async () => {
+    const output = await fixture('<script setup lang="jsx">const vnode = <div>hi</div></script>')
+    const { scriptSetup } = parse(output).descriptor
+
+    expect(scriptSetup?.lang).toBe('jsx')
+    expect(scriptSetup?.content).toContain('<div>hi</div>')
+  })
+
+  it('converts TSX macros and types while preserving JSX', async () => {
+    const output = await fixture(`<script setup lang="tsx">
+const props = defineProps<{ msg: string }>()
+const emit = defineEmits<{ change: [value: number] }>()
+const vnode = <div>{props.msg as string}</div>
+</script>`)
+    const { scriptSetup } = parse(output).descriptor
+
+    expect(scriptSetup?.content).toContain('type: String')
+    expect(scriptSetup?.content).toContain('defineEmits(["change"])')
+    expect(scriptSetup?.content).toContain('<div>{props.msg}</div>')
+    expect(scriptSetup?.content).not.toMatch(/define(?:Props|Emits)</)
+    expect(scriptSetup?.content).not.toContain('as string')
+    expect(scriptSetup?.lang).toBe('jsx')
+  })
+
+  it('converts TSX macros even without JSX syntax', async () => {
+    const output = await fixture('<script setup lang="tsx">defineProps<{ msg: string }>()</script>')
+    const { scriptSetup } = parse(output).descriptor
+
+    expect(scriptSetup?.content).toContain('type: String')
+    expect(scriptSetup?.content).not.toContain('defineProps()')
+    expect(scriptSetup?.content).not.toContain('defineProps<')
+    expect(scriptSetup?.lang).toBe('jsx')
+  })
+
+  it('removes template type syntax in a TSX SFC', async () => {
+    const output = await fixture(`<script setup lang="tsx">const msg = 'hi'</script>
+<template><div>{{ (msg as string).length }}</div></template>`)
+    const { template } = parse(output).descriptor
+
+    expect(template?.content).toContain('msg')
+    expect(template?.content).toContain('.length')
+    expect(template?.content).not.toContain('as string')
+  })
+
   async function fixture(src: string): Promise<string> {
     await rm(tmpDir, { force: true, recursive: true })
     await mkdir(join(tmpDir, 'src'), { recursive: true })
