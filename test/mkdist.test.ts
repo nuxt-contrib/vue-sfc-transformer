@@ -244,7 +244,7 @@ describe('transform typescript script setup', () => {
     expect(output).not.toContain('as string')
     expect(output).toMatchInlineSnapshot(`
       "<template>
-        <div>{{ msg }}</div>
+        <div>{{ (msg          ) }}</div>
       </template>
       "
     `)

@@ -8,7 +8,6 @@
     "vue-sfc-transformer": "workspace:*"
   },
   "devDependencies": {
-    "@vue/compiler-sfc": "catalog:dev",
-    "esbuild": "catalog:peer"
+    "@vue/compiler-sfc": "catalog:dev"
   }
 }
