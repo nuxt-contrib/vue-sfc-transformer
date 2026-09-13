@@ -4,6 +4,7 @@ import type { Loader } from '../types/mkdist'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
+import { transpileSync } from 'petrea'
 import { scriptLoader } from '../block-loader/script'
 import { styleLoader } from '../block-loader/style'
 import { templateLoader } from '../block-loader/template'
@@ -13,7 +14,7 @@ type ScriptTranspiler = (
   code: string,
   isJsx: boolean,
   esbuildOptions?: Record<string, unknown>,
-) => Promise<string>
+) => string | Promise<string>
 
 let cachedTranspiler: Promise<ScriptTranspiler> | undefined
 
@@ -22,6 +23,9 @@ let cachedTranspiler: Promise<ScriptTranspiler> | undefined
  * that consumers who only build with it don't pull in esbuild's binaries;
  * `esbuild` is used when it is the only one installed, or when mkdist's
  * `esbuild` options are set (those have no `rolldown` equivalent).
+ *
+ * If neither `esbuild` nor `rolldown` is available, the bundled `petrea`
+ * transpiler is used.
  */
 function loadTranspiler(preferEsbuild: boolean): Promise<ScriptTranspiler> {
   cachedTranspiler ||= (async () => {
@@ -32,10 +36,14 @@ function loadTranspiler(preferEsbuild: boolean): Promise<ScriptTranspiler> {
         return transpiler
       }
     }
-    throw new Error('[vue-sfc-transformer] the mkdist loader needs either `rolldown` or `esbuild` to be installed')
+    return transpileWithPetrea
   })()
 
   return cachedTranspiler
+}
+
+function transpileWithPetrea(code: string, isJsx: boolean): string {
+  return transpileSync(code, { lang: isJsx ? 'tsx' : 'ts' })
 }
 
 async function loadEsbuild(): Promise<ScriptTranspiler | undefined> {
