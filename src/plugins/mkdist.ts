@@ -9,7 +9,11 @@ import { styleLoader } from '../block-loader/style'
 import { templateLoader } from '../block-loader/template'
 import { defineVueSFCTransformer } from '../sfc-transformer'
 
-type ScriptTranspiler = (code: string, esbuildOptions?: Record<string, unknown>) => Promise<string>
+type ScriptTranspiler = (
+  code: string,
+  isJsx: boolean,
+  esbuildOptions?: Record<string, unknown>,
+) => Promise<string>
 
 let cachedTranspiler: Promise<ScriptTranspiler> | undefined
 
@@ -39,10 +43,15 @@ async function loadEsbuild(): Promise<ScriptTranspiler | undefined> {
   if (!esbuild) {
     return
   }
-  return async (code, esbuildOptions) => {
+  return async (code, isJsx, esbuildOptions) => {
     const { code: output } = await esbuild.transform(code, {
       ...esbuildOptions,
-      loader: 'ts',
+      ...(isJsx
+        ? {
+            loader: 'tsx',
+            jsx: 'preserve' as const,
+          }
+        : { loader: 'ts' }),
       tsconfigRaw: { compilerOptions: { target: 'ESNext', verbatimModuleSyntax: true } },
     })
     return output
@@ -54,10 +63,12 @@ async function loadRolldown(): Promise<ScriptTranspiler | undefined> {
   if (!rolldown) {
     return
   }
-  return async (code) => {
-    const result = await rolldown.transform('__sfc.ts', code, {
-      lang: 'ts',
+  return async (code, isJsx) => {
+    const lang = isJsx ? 'tsx' : 'ts'
+    const result = await rolldown.transform(`__sfc.${lang}`, code, {
+      lang,
       sourcemap: false,
+      ...(isJsx ? { jsx: 'preserve' as const } : {}),
       // Usage-based elision would drop imports referenced only in the template,
       // which this transform never sees.
       typescript: { onlyRemoveTypeImports: true },
@@ -116,7 +127,8 @@ export const vueLoader: Loader = async (input, mkdistContext) => {
 
   const loadFile: VueSFCTransformerFileLoader = async (file, context) => {
     if (context.block.type === 'script') {
-      return [{ extension: '.js', content: await transpileScript(file.content, esbuildOptions) }]
+      const isJsx = file.extension === '.jsx' || file.extension === '.tsx'
+      return [{ extension: '.js', content: await transpileScript(file.content, isJsx, esbuildOptions) }]
     }
 
     const result = await mkdistContext.loadFile({
