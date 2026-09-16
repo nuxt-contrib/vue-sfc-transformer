@@ -52,10 +52,13 @@ export interface VueSfcPluginOptions {
   emitLegacyDeclarationAlias?: boolean
 }
 
-async function transpileScript(code: string, filename = '__sfc.ts'): Promise<string> {
+async function transpileScript(code: string, lang: 'ts' | 'tsx' = 'ts', filename = `__sfc.${lang}`): Promise<string> {
   const result = await transform(filename, code, {
-    lang: 'ts',
+    lang,
     sourcemap: false,
+    // Only TypeScript is stripped; JSX stays in the output and is lowered by
+    // the consumer's toolchain.
+    ...(lang === 'tsx' ? { jsx: 'preserve' as const } : {}),
     // Usage-based elision would drop imports referenced only in the template,
     // which this transform never sees.
     typescript: { onlyRemoveTypeImports: true },
@@ -68,11 +71,31 @@ async function transpileScript(code: string, filename = '__sfc.ts'): Promise<str
   return (result.code ?? code).replace(/^export \{\};?[ \t]*\r?\n?/m, '')
 }
 
+// A `tsx` script still contains JSX after TypeScript is stripped, so its lang
+// attribute is rewritten to `jsx` rather than dropped, telling the consumer's
+// toolchain to lower the JSX. Scripts without TypeScript keep their lang.
+function scriptAttrs(
+  attrs: Record<string, string | true>,
+  lang: string | undefined,
+  transpiled: boolean,
+): Record<string, string | true> {
+  const stripped = stripAttrs(attrs, ['lang', 'generic'])
+  if (lang === 'tsx') {
+    return { ...stripped, lang: 'jsx' }
+  }
+  if (!transpiled && lang) {
+    return { ...stripped, lang }
+  }
+  return stripped
+}
+
 // Transform `.vue` files: strip TS from <script>/<script setup> (lowering
-// type-only macros via `preTranspileScriptSetup`), strip TS from template expressions,
-// then emit:
+// type-only macros via `preTranspileScriptSetup`), strip TS from template
+// expressions, then emit:
 //
-//   foo.vue        runtime SFC with JS-only <script> and template
+//   foo.vue        runtime SFC with JS-only <script> and template. A `tsx`
+//                  script is re-tagged `lang="jsx"`: only its TypeScript is
+//                  stripped, the JSX is left for the consumer's toolchain.
 //   foo.d.vue.ts   typed declaration produced by vue-tsc; the form
 //                  `vue-tsc` / `@vue/language-core` / `@volar/typescript`
 //                  resolve when an SFC imports `./foo.vue`
@@ -188,28 +211,35 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
   }
 
   const sfcScriptLang = getSfcScriptLang(input, sfc.descriptor.script, sfc.descriptor.scriptSetup)
-  const isTs = sfcScriptLang === 'ts'
+  const isTs = sfcScriptLang === 'ts' || sfcScriptLang === 'tsx'
 
   const blocks: Array<{ type: string, attrs: Record<string, string | true>, content: string, offset: number }> = []
 
   if (sfc.descriptor.scriptSetup) {
-    const block = isTs
-      ? await preTranspileScriptSetup(sfc.descriptor, filename)
-      : sfc.descriptor.scriptSetup
-    const content = isTs ? await transpileScript(block.content) : block.content
+    const setup = sfc.descriptor.scriptSetup
+    // `setup.lang` decides; `isTs` only applies when the setup block itself is
+    // untagged (a sibling `<script lang="ts">` implies TS for it too).
+    const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
+    const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, filename) : setup
+    const content = setupIsTs
+      ? await transpileScript(block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
+      : block.content
     blocks.push({
       type: 'script',
-      attrs: stripAttrs(block.attrs, ['lang', 'generic']),
+      attrs: scriptAttrs(setup.attrs, setup.lang, setupIsTs),
       content,
-      offset: sfc.descriptor.scriptSetup.loc.start.offset,
+      offset: setup.loc.start.offset,
     })
   }
   if (sfc.descriptor.script) {
     const block = sfc.descriptor.script
-    const content = block.lang === 'ts' ? await transpileScript(block.content) : block.content
+    const scriptLang = block.lang === 'ts' || block.lang === 'tsx' ? block.lang : undefined
+    const content = scriptLang
+      ? await transpileScript(block.content, scriptLang)
+      : block.content
     blocks.push({
       type: 'script',
-      attrs: stripAttrs(block.attrs, ['lang']),
+      attrs: scriptAttrs(block.attrs, block.lang, scriptLang !== undefined),
       content,
       offset: block.loc.start.offset,
     })

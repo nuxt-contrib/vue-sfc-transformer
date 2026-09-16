@@ -51,7 +51,8 @@ export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): Vue
 
     // we need to remove typescript from template block if the block is typescript
     const sfcScriptLang = getSfcScriptLang(input, sfc.descriptor.script, sfc.descriptor.scriptSetup)
-    const isTs = sfcScriptLang === 'ts'
+    const isTs = sfcScriptLang === 'ts' || sfcScriptLang === 'tsx'
+    const isJsx = sfcScriptLang === 'jsx' || sfcScriptLang === 'tsx'
 
     const blocks: SFCBlock[] = [
       ...sfc.descriptor.styles,
@@ -73,7 +74,7 @@ export function defineVueSFCTransformer(options?: VueSFCTransformerOptions): Vue
       )
     }
 
-    const loaderContext: BlockLoaderContext = { isTs, path, srcPath, raw: input, sfc, loadFile }
+    const loaderContext: BlockLoaderContext = { isTs, isJsx, path, srcPath, raw: input, sfc, loadFile }
     const results = await Promise.all(blocks.map(async (block) => {
       const blockLoader = blockLoaders[block.type]
       const result = await blockLoader?.(block, loaderContext).catch((cause) => {
