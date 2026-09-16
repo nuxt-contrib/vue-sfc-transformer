@@ -5,6 +5,7 @@ import { babelParse, extractRuntimeEmits, extractRuntimeProps, inferRuntimeType,
 
 interface Context {
   ctx: SimpleTypeResolveContext
+  helpers: Set<string>
 }
 
 const DEFINE_EMITS = 'defineEmits'
@@ -58,6 +59,12 @@ export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string): P
         }
       }
     }
+  }
+
+  if (context.helpers.size > 0) {
+    resultBuilder.prepend(
+      `import { ${Array.from(context.helpers, helper => `${helper} as _${helper}`).join(', ')} } from 'vue'\n`,
+    )
   }
 
   return {
@@ -244,7 +251,7 @@ function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [Str
 }
 
 async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string): Promise<Context> {
-  const helper = new Set<string>()
+  const helpers = new Set<string>()
   const ast = babelParse(`${scriptSetup.content}\n${script?.content}`, {
     sourceType: 'module',
     plugins: (['tsx', 'jsx'] as Array<string | undefined>).includes(scriptSetup.lang)
@@ -263,7 +270,7 @@ async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptS
       throw new Error(`[vue-sfc-transformer] ${msg}`)
     },
     helper: (key) => {
-      helper.add(key)
+      helpers.add(key)
       return `_${key}`
     },
     getString: (node) => {
@@ -279,6 +286,7 @@ async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptS
 
   return {
     ctx,
+    helpers,
   }
 }
 

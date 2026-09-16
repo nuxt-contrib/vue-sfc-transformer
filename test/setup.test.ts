@@ -127,6 +127,33 @@ describe('transform typescript script setup', () => {
     await expect(fixture(`<script setup lang="ts">withDefaults()</script>`)).rejects.toThrow(`[vue-sfc-transformer] withDefaults' first argument must be a defineProps call.`)
   })
 
+  it('withDefaults with non-static defaults imports compiler helper', async () => {
+    expect(
+      await fixture(
+        `<script setup lang="ts">const props = withDefaults(defineProps<{ msg?: string }>(), defaults)</script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup>
+      import { mergeDefaults as _mergeDefaults } from 'vue'
+      const props = defineProps(/*@__PURE__*/_mergeDefaults({
+          msg: { type: String, required: false }
+        }, defaults))
+      </script>"
+    `)
+    expect(
+      await fixture(
+        `<script setup lang="ts">const props = withDefaults(defineProps<{ msg?: string }>(), { ...defaults })</script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup>
+      import { mergeDefaults as _mergeDefaults } from 'vue'
+      const props = defineProps(/*@__PURE__*/_mergeDefaults({
+          msg: { type: String, required: false }
+        }, { ...defaults }))
+      </script>"
+    `)
+  })
+
   it('defineEmits', async () => {
     expect(
       await fixture(
