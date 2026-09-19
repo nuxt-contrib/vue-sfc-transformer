@@ -13,6 +13,7 @@ import { emitVueDeclarations } from '../dts/emit'
 import { escapeSfcAttrValue } from '../utils/attrs'
 import { isAbsolute, relative, resolve } from '../utils/path'
 import { getSfcScriptLang } from '../utils/script-lang'
+import { transpileScriptBlock } from '../utils/script-transpile'
 
 export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
@@ -58,10 +59,9 @@ export interface VueSfcPluginOptions {
   // `tsc`) at the `Foo.vue.d.ts` alias instead of a bare `.vue` specifier
   // that resolves to the runtime SFC.
   emitLegacyDeclarationAlias?: boolean
-  // `transform` from `rolldown/utils`, used to strip TypeScript from script
-  // blocks and template expressions. Pass the one from the rolldown running
-  // the build so that only one copy of rolldown is loaded. Defaults to the
-  // `rolldown` peer dependency, imported on first use.
+  // Overrides the petrea-based TypeScript stripping of script blocks with
+  // `transform` from `rolldown/utils`. Pass the one from the rolldown running
+  // the build so that only one copy of rolldown is loaded.
   transform?: Transform
 }
 
@@ -77,12 +77,6 @@ const EMPTY_ENTRY_ID = '\0vue-sfc-transformer:empty-entry'
  */
 export const emptyEntry: Record<string, string> = {
   'vue-sfc-transformer-empty-entry': EMPTY_ENTRY_ID,
-}
-
-let defaultTransform: Promise<Transform> | undefined
-function loadDefaultTransform(): Promise<Transform> {
-  defaultTransform ??= import('rolldown/utils').then(r => r.transform)
-  return defaultTransform
 }
 
 async function transpileScript(transform: Transform, code: string, lang: 'ts' | 'tsx' = 'ts', filename = `__sfc.${lang}`): Promise<string> {
@@ -102,6 +96,10 @@ async function transpileScript(transform: Transform, code: string, lang: 'ts' | 
   // oxc appends `export {}` when every import is elided as type-only; it is
   // invalid in `<script setup>`, and is emitted before any trailing trivia.
   return (result.code ?? code).replace(/^export \{\};?[ \t]*\r?\n?/m, '')
+}
+
+async function transpileScriptWithOptions(transform: Transform | undefined, code: string, lang: 'ts' | 'tsx', filename: string): Promise<string> {
+  return transform ? transpileScript(transform, code, lang, filename) : transpileScriptBlock(code, lang, filename)
 }
 
 // A `tsx` script still contains JSX after TypeScript is stripped, so its lang
@@ -194,7 +192,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         return
       }
 
-      const transform = pluginOptions.transform ?? await loadDefaultTransform()
+      const transform = pluginOptions.transform
       const rawSources = new Map<string, string>()
       const runtimeByFile = new Map<string, string>()
 
@@ -256,7 +254,7 @@ interface TransformResult {
   errors: Error[]
 }
 
-async function transformVueSfc(input: string, filename: string, transform: Transform): Promise<TransformResult> {
+async function transformVueSfc(input: string, filename: string, transform: Transform | undefined): Promise<TransformResult> {
   const errors: Error[] = []
   const sfc = parse(input, { filename, ignoreEmpty: true })
   if (sfc.errors.length) {
@@ -278,7 +276,7 @@ async function transformVueSfc(input: string, filename: string, transform: Trans
     const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
     const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, filename) : setup
     const content = setupIsTs
-      ? await transpileScript(transform, block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
+      ? await transpileScriptWithOptions(transform, block.content, setup.lang === 'tsx' ? 'tsx' : 'ts', filename)
       : block.content
     blocks.push({
       type: 'script',
@@ -291,7 +289,7 @@ async function transformVueSfc(input: string, filename: string, transform: Trans
     const block = sfc.descriptor.script
     const scriptLang = block.lang === 'ts' || block.lang === 'tsx' ? block.lang : undefined
     const content = scriptLang
-      ? await transpileScript(transform, block.content, scriptLang)
+      ? await transpileScriptWithOptions(transform, block.content, scriptLang, filename)
       : block.content
     blocks.push({
       type: 'script',

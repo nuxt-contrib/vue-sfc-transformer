@@ -20,7 +20,6 @@ overrides:
 
 allowBuilds:
   '@parcel/watcher': false
-  esbuild: false
   simple-git-hooks: true
 
 catalogs:
@@ -48,7 +47,6 @@ catalogs:
     vue-tsc: 3.3.14
   peer:
     '@vue/compiler-core': 3.5.45
-    esbuild: 0.28.2
     vue: 3.5.45
   prod:
     petrea: ^0.5.1
