@@ -55,4 +55,5 @@ catalogs:
 
 allowBuilds:
   '@parcel/watcher': false
+  esbuild: false
   simple-git-hooks: true
