@@ -26,9 +26,7 @@ function warnUnusedEsbuildOptions(options: Record<string, unknown> | undefined):
   }
   _warnedUnusedEsbuildOptions = true
   console.warn(
-    '[vue-sfc-transformer] mkdist\'s `esbuild` option is no longer applied to `.vue` script blocks: '
-    + 'they are transpiled with the bundled `petrea` transpiler, which has no equivalent for these options. '
-    + 'The option still configures mkdist\'s own `js` loader for `.ts` files.',
+    '[vue-sfc-transformer] mkdist\'s `esbuild` option is no longer applied to `.vue` script blocks',
   )
 }
 
