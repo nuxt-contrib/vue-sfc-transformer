@@ -55,7 +55,7 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     const runtime = await readFile(join(root, 'dist-default/Hello.vue'), 'utf8')
     expect(runtime).not.toContain('lang="ts"')
     expect(runtime).not.toContain('defineProps<{ msg: string }>()')
-    expect(runtime).toContain('defineProps({ msg:')
+    expect(runtime).toContain('msg: { type: String, required: true }')
 
     const dts = await readFile(join(root, 'dist-default/Hello.d.vue.ts'), 'utf8')
     expect(dts).toContain('msg')
@@ -231,7 +231,7 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
 
     const output = await readFile(join(templateOnlyRoot, 'dist/Parent.vue'), 'utf8')
     const { descriptor } = parse(output, { filename: 'Parent.vue' })
-    expect(descriptor.scriptSetup?.content).toContain('import Child from "./Child.vue"')
+    expect(descriptor.scriptSetup?.content).toContain(`import Child from './Child.vue'`)
     expect(descriptor.scriptSetup?.content).not.toContain('./types')
   })
 
@@ -277,7 +277,7 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     const output = await readFile(join(typeOnlyRoot, 'dist/TypeOnly.vue'), 'utf8')
     const { descriptor } = parse(output, { filename: 'TypeOnly.vue' })
     expect(descriptor.scriptSetup?.content).not.toContain('export {}')
-    expect(descriptor.scriptSetup?.content).toContain('const style = { color: "red" }')
+    expect(descriptor.scriptSetup?.content).toContain(`{ color: 'red' }`)
 
     const withComment = await readFile(join(typeOnlyRoot, 'dist/TypeOnlyTrailingComment.vue'), 'utf8')
     const commented = parse(withComment, { filename: 'TypeOnlyTrailingComment.vue' }).descriptor
@@ -287,7 +287,26 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     const scriptOutput = await readFile(join(typeOnlyRoot, 'dist/TypeOnlyScript.vue'), 'utf8')
     const script = parse(scriptOutput, { filename: 'TypeOnlyScript.vue' }).descriptor
     expect(script.script?.content).not.toContain('export {}')
-    expect(script.script?.content).toContain('const style = { color: "red" }')
+    expect(script.script?.content).toContain(`{ color: 'red' }`)
+  })
+
+  it('fails the build on TypeScript with runtime semantics', async () => {
+    const badRoot = join(root, 'unsupported-syntax')
+    await rm(badRoot, { force: true, recursive: true })
+    await mkdir(join(badRoot, 'src'), { recursive: true })
+    await writeFile(join(badRoot, 'src/index.ts'), 'export const x = 1\n')
+    await writeFile(
+      join(badRoot, 'src/Bad.vue'),
+      '<script setup lang="ts">\nclass Button { constructor(private label: string) {} }\n</script>\n<template><div /></template>\n',
+    )
+
+    await expect(build({
+      cwd: badRoot,
+      entry: ['src/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin({ srcDir: 'src', cwd: badRoot, cache: false })],
+    })).rejects.toThrow(/runtime semantics that cannot be erased/)
   })
 
   // Bug: attribute values are serialised with `key="${value}"` without
@@ -389,7 +408,8 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
 
       expect(scriptSetup?.content).toContain('type: String')
       expect(scriptSetup?.content).toContain('defineEmits(["change"])')
-      expect(scriptSetup?.content).toContain('<div>{props.msg}</div>')
+      // petrea blanks `as string` in place, so only match the JSX shape.
+      expect(scriptSetup?.content).toMatch(/<div>\{props\.msg\s*\}<\/div>/)
       expect(scriptSetup?.content).not.toMatch(/define(?:Props|Emits)</)
       expect(scriptSetup?.content).not.toContain('as string')
       expect(scriptSetup?.lang).toBe('jsx')

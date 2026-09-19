@@ -269,13 +269,13 @@ catalogs:
       specifier: 3.3.11
       version: 3.3.11
   peer:
-    esbuild:
-      specifier: 0.28.2
-      version: 0.28.2
     vue:
       specifier: 3.5.42
       version: 3.5.42
   prod:
+    petrea:
+      specifier: ^0.5.1
+      version: 0.5.1
     tinyglobby:
       specifier: ^0.2.16
       version: 0.2.17
@@ -288,6 +288,9 @@ importers:
 
   .:
     dependencies:
+      petrea:
+        specifier: catalog:prod
+        version: 0.5.1
       tinyglobby:
         specifier: catalog:prod
         version: 0.2.17
@@ -316,9 +319,6 @@ importers:
       '@vue/language-core':
         specifier: catalog:dev
         version: 3.3.11
-      esbuild:
-        specifier: catalog:peer
-        version: 0.28.2
       eslint:
         specifier: catalog:dev
         version: 10.10.0(jiti@2.7.0)
@@ -374,9 +374,6 @@ importers:
       '@vue/compiler-sfc':
         specifier: catalog:dev
         version: 3.5.42
-      esbuild:
-        specifier: catalog:peer
-        version: 0.28.2
 
 packages:
 
@@ -1195,6 +1192,58 @@ packages:
 
   '@oxc-resolver/binding-win32-x64-msvc@11.24.2':
     resolution: {integrity: sha512-UqGPmo56KDfLlfXFAFIrNflHT8tFxWGEivWg3Zeyp4Uy2NlKN1FGPr6/BxcLGG3+kZ6Wp14g5Uj+n71boqZfiw==}
+    cpu: [x64]
+    os: [win32]
+
+  '@petrea/binding-darwin-arm64@0.5.1':
+    resolution: {integrity: sha512-UdP6uFBZy+pB7l3isaNmn/u+xZ7uOxlGAEdsqQ3Jj52onkmM8Qo1yY6m8rCEeAZhg2bILQCCekvn/D2lHkdEZg==}
+    engines: {node: '>=20.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@petrea/binding-darwin-x64@0.5.1':
+    resolution: {integrity: sha512-LISPfirpj60xN4NMvAGa5/cWRmk5+sXotT97tHN0ai0arzaivKLhGwzrNdgy3Vu43VrLLz8MDk861IoauEaSfQ==}
+    engines: {node: '>=20.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@petrea/binding-linux-arm64-gnu@0.5.1':
+    resolution: {integrity: sha512-B4CSgAgdeYiyok9sMT3/pghaI4FkBxCplf6vTnMkwyyVxKQZm4iYXFtbdw/6XxSdtKcADUyfaXIZEG4BgcPREA==}
+    engines: {node: '>=20.0.0'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@petrea/binding-linux-arm64-musl@0.5.1':
+    resolution: {integrity: sha512-SQ+p9Oye1kP4xc9YuPUIvbeM5E2iFgP3ZFC9rBt7rVlHDyf1UB+tFiG/KN+RhTi2ctVohFh+U++keiwl3EfkKA==}
+    engines: {node: '>=20.0.0'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@petrea/binding-linux-x64-gnu@0.5.1':
+    resolution: {integrity: sha512-oMNygiwNffSfAB0JcgxRskEyEJzI7PLy04IsVBXFvDvqrY0RB92d9bCurS2ZJvV16k4/mgqAEiXyz0nirhmEUQ==}
+    engines: {node: '>=20.0.0'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@petrea/binding-linux-x64-musl@0.5.1':
+    resolution: {integrity: sha512-FvdMkJ0L61oqF4x7R/8FFvjcKKA3jHrZzZ3xPljd3lI5qHHUO/J1DEYzjC9buoT4DYDlemLdPbi4jyBk+VOpkw==}
+    engines: {node: '>=20.0.0'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@petrea/binding-win32-arm64-msvc@0.5.1':
+    resolution: {integrity: sha512-ouBFIgZj0A8TklCkRFiYlWaonSMztyCo+9NtLCWYOwuidroRhzbqHEiML8YuEqKuqnjkMNr5B1D+5WE0PgPm9Q==}
+    engines: {node: '>=20.0.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@petrea/binding-win32-x64-msvc@0.5.1':
+    resolution: {integrity: sha512-5m2Y5XIi6j9IT74FYP/Dw9tsPW+64l3thdeAivPe88Q1gpHuwOAVPPA+MyzRT9Q1i+BuWPk3mgQkTGpWnJaKsw==}
+    engines: {node: '>=20.0.0'}
     cpu: [x64]
     os: [win32]
 
@@ -3077,6 +3126,15 @@ packages:
     resolution: {integrity: sha512-T6hvS1bc/rXh4fA7jWOAteq5/c2kkz4QFRmGY9dER1ncqBDNwwWRD3h43ruiRr3YK5zHNqVrqfo2XUEqRo4gdQ==}
     engines: {node: ^22.13.0 || >=24.0.0, typescript: '>=5.9'}
 
+  petrea@0.5.1:
+    resolution: {integrity: sha512-wwvg7mgWc139VKjeWX6EfbPJ5pPMA63LsMXarkYhnSYSNDXAdGPHnE4NKV5p5NwOxd0/PL5flBy5elMgFu5Msg==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@petrea/wasm': 0.5.1
+    peerDependenciesMeta:
+      '@petrea/wasm':
+        optional: true
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -4373,6 +4431,30 @@ snapshots:
   '@oxc-resolver/binding-win32-x64-msvc@11.24.2':
     optional: true
 
+  '@petrea/binding-darwin-arm64@0.5.1':
+    optional: true
+
+  '@petrea/binding-darwin-x64@0.5.1':
+    optional: true
+
+  '@petrea/binding-linux-arm64-gnu@0.5.1':
+    optional: true
+
+  '@petrea/binding-linux-arm64-musl@0.5.1':
+    optional: true
+
+  '@petrea/binding-linux-x64-gnu@0.5.1':
+    optional: true
+
+  '@petrea/binding-linux-x64-musl@0.5.1':
+    optional: true
+
+  '@petrea/binding-win32-arm64-msvc@0.5.1':
+    optional: true
+
+  '@petrea/binding-win32-x64-msvc@0.5.1':
+    optional: true
+
   '@pkgr/core@0.3.6': {}
 
   '@pnpm/constants@1001.3.1': {}
@@ -5149,6 +5231,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.2
       '@esbuild/win32-ia32': 0.28.2
       '@esbuild/win32-x64': 0.28.2
+    optional: true
 
   escalade@3.2.0: {}
 
@@ -6300,6 +6383,17 @@ snapshots:
   pathe@2.0.3: {}
 
   peowly@2.0.1: {}
+
+  petrea@0.5.1:
+    optionalDependencies:
+      '@petrea/binding-darwin-arm64': 0.5.1
+      '@petrea/binding-darwin-x64': 0.5.1
+      '@petrea/binding-linux-arm64-gnu': 0.5.1
+      '@petrea/binding-linux-arm64-musl': 0.5.1
+      '@petrea/binding-linux-x64-gnu': 0.5.1
+      '@petrea/binding-linux-x64-musl': 0.5.1
+      '@petrea/binding-win32-arm64-msvc': 0.5.1
+      '@petrea/binding-win32-x64-msvc': 0.5.1
 
   picocolors@1.1.1: {}
 

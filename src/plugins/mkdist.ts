@@ -8,81 +8,29 @@ import { scriptLoader } from '../block-loader/script'
 import { styleLoader } from '../block-loader/style'
 import { templateLoader } from '../block-loader/template'
 import { defineVueSFCTransformer } from '../sfc-transformer'
-
-type ScriptTranspiler = (
-  code: string,
-  isJsx: boolean,
-  esbuildOptions?: Record<string, unknown>,
-) => Promise<string>
-
-let cachedTranspiler: Promise<ScriptTranspiler> | undefined
-
-/**
- * `esbuild` and `rolldown` are both optional peers. `rolldown` is preferred so
- * that consumers who only build with it don't pull in esbuild's binaries;
- * `esbuild` is used when it is the only one installed, or when mkdist's
- * `esbuild` options are set (those have no `rolldown` equivalent).
- */
-function loadTranspiler(preferEsbuild: boolean): Promise<ScriptTranspiler> {
-  cachedTranspiler ||= (async () => {
-    const loaders = preferEsbuild ? [loadEsbuild, loadRolldown] : [loadRolldown, loadEsbuild]
-    for (const loader of loaders) {
-      const transpiler = await loader()
-      if (transpiler) {
-        return transpiler
-      }
-    }
-    throw new Error('[vue-sfc-transformer] the mkdist loader needs either `rolldown` or `esbuild` to be installed')
-  })()
-
-  return cachedTranspiler
-}
-
-async function loadEsbuild(): Promise<ScriptTranspiler | undefined> {
-  const esbuild = await import('esbuild').catch(() => undefined)
-  if (!esbuild) {
-    return
-  }
-  return async (code, isJsx, esbuildOptions) => {
-    const { code: output } = await esbuild.transform(code, {
-      ...esbuildOptions,
-      ...(isJsx
-        ? {
-            loader: 'tsx',
-            jsx: 'preserve' as const,
-          }
-        : { loader: 'ts' }),
-      tsconfigRaw: { compilerOptions: { target: 'ESNext', verbatimModuleSyntax: true } },
-    })
-    return output
-  }
-}
-
-async function loadRolldown(): Promise<ScriptTranspiler | undefined> {
-  const rolldown = await import('rolldown/utils').catch(() => undefined)
-  if (!rolldown) {
-    return
-  }
-  return async (code, isJsx) => {
-    const lang = isJsx ? 'tsx' : 'ts'
-    const result = await rolldown.transform(`__sfc.${lang}`, code, {
-      lang,
-      sourcemap: false,
-      ...(isJsx ? { jsx: 'preserve' as const } : {}),
-      // Usage-based elision would drop imports referenced only in the template,
-      // which this transform never sees.
-      typescript: { onlyRemoveTypeImports: true },
-    })
-    if (result.errors.length) {
-      throw new AggregateError(result.errors, '[vue-sfc-transformer] failed to transpile script block')
-    }
-    // oxc appends `export {}` when every import is elided as type-only; it is
-    // invalid in `<script setup>`, and is emitted before any trailing trivia.
-    return (result.code ?? code).replace(/^export \{\};?[ \t]*\r?\n?/m, '')
-  }
-}
+import { transpileScriptBlock } from '../utils/script-transpile'
 
 const BACKSLASH_REGEX = /\\/g
+
+let _warnedUnusedEsbuildOptions = false
+/**
+ * mkdist's own `js` loader still reads its `esbuild` option for `.ts` files,
+ * but the Vue loader no longer does: script blocks are transpiled with the
+ * bundled `petrea` transpiler, which has no equivalent for those options.
+ * Warn once so a configured-but-ignored setup is visible instead of silently
+ * changing the output relative to when `esbuild` transpiled the blocks.
+ */
+function warnUnusedEsbuildOptions(options: Record<string, unknown> | undefined): void {
+  if (_warnedUnusedEsbuildOptions || !options || Object.keys(options).length === 0) {
+    return
+  }
+  _warnedUnusedEsbuildOptions = true
+  console.warn(
+    '[vue-sfc-transformer] mkdist\'s `esbuild` option is no longer applied to `.vue` script blocks: '
+    + 'they are transpiled with the bundled `petrea` transpiler, which has no equivalent for these options. '
+    + 'The option still configures mkdist\'s own `js` loader for `.ts` files.',
+  )
+}
 
 let _isMkdistSupportDualVueDts: boolean | undefined
 function isMkdistSupportDualVueDts(): boolean {
@@ -120,15 +68,17 @@ export const vueLoader: Loader = async (input, mkdistContext) => {
     return
   }
 
-  const esbuildOptions = mkdistContext.options.esbuild as Record<string, unknown> | undefined
-  const transpileScript = await loadTranspiler(!!esbuildOptions && Object.keys(esbuildOptions).length > 0)
+  warnUnusedEsbuildOptions(mkdistContext.options.esbuild as Record<string, unknown> | undefined)
   const path = input.path
   const srcPath = input.srcPath || resolve(input.path)
 
   const loadFile: VueSFCTransformerFileLoader = async (file, context) => {
     if (context.block.type === 'script') {
       const isJsx = file.extension === '.jsx' || file.extension === '.tsx'
-      return [{ extension: '.js', content: await transpileScript(file.content, isJsx, esbuildOptions) }]
+      return [{
+        extension: '.js',
+        content: transpileScriptBlock(file.content, isJsx ? 'tsx' : 'ts', srcPath),
+      }]
     }
 
     const result = await mkdistContext.loadFile({
