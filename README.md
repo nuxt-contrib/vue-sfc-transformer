@@ -21,8 +21,6 @@ pnpm install vue-sfc-transformer vue @vue/compiler-core
 
 TypeScript types in template expressions are stripped by `petrea` transpiler, which blanks them in place to preserve line and column positions.
 
-Script blocks in the `mkdist` loader are transpiled with an external transpiler when one is available — `rolldown` (preferred) or `esbuild`, both optional peers — and fall back to the bundled `petrea` transpiler when neither is installed. When mkdist's `esbuild` options are set, `esbuild` is preferred.
-
 ```js
 import { parse as parseSFC } from '@vue/compiler-sfc'
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
@@ -72,7 +70,7 @@ import { vueLoader } from 'vue-sfc-transformer/mkdist'
 
 `vue-sfc-transformer/rolldown` ships a [rolldown](https://github.com/rolldown/rolldown) plugin that transpiles `<script lang="ts">` and template expressions, then emits a `<name>.d.vue.ts` declaration for each SFC under `srcDir`. That's the form `vue-tsc` / `@vue/language-core` / `@volar/typescript` (since 2.4.19) resolve for `import './Foo.vue'`. Pass `emitLegacyDeclarationAlias: true` to also emit the older `<name>.vue.d.ts` form, which plain `tsc` resolves but vue-tsc does not.
 
-Script blocks are transpiled with `verbatimModuleSyntax` semantics: only explicit `import type` statements and inline `type` specifiers are removed. A type-only import written without the `type` keyword (`import { Props } from './types'`) survives into the emitted SFC as a runtime import and will fail to resolve at runtime; make sure to write `import type` for types.
+Script blocks are transpiled by the `petrea` transpiler with `verbatimModuleSyntax` semantics: only explicit `import type` statements and inline `type` specifiers are removed. A type-only import written without the `type` keyword (`import { Props } from './types'`) survives into the emitted SFC as a runtime import and will fail to resolve at runtime; make sure to write `import type` for types.
 
 Works with anything that runs rolldown plugins: [tsdown](https://github.com/rolldown/tsdown), [obuild](https://github.com/unjs/obuild) or rolldown directly.
 

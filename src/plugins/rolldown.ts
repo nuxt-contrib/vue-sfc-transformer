@@ -4,7 +4,6 @@ import type { DtsCache } from '../dts/cache'
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
 
-import { transform } from 'rolldown/utils'
 import { glob } from 'tinyglobby'
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
 import { parse } from 'vue/compiler-sfc'
@@ -13,6 +12,7 @@ import { emitVueDeclarations } from '../dts/emit'
 import { escapeSfcAttrValue } from '../utils/attrs'
 import { isAbsolute, relative, resolve } from '../utils/path'
 import { getSfcScriptLang } from '../utils/script-lang'
+import { transpileScriptBlock } from '../utils/script-transpile'
 
 export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
@@ -50,25 +50,6 @@ export interface VueSfcPluginOptions {
   // `tsc`) at the `Foo.vue.d.ts` alias instead of a bare `.vue` specifier
   // that resolves to the runtime SFC.
   emitLegacyDeclarationAlias?: boolean
-}
-
-async function transpileScript(code: string, lang: 'ts' | 'tsx' = 'ts', filename = `__sfc.${lang}`): Promise<string> {
-  const result = await transform(filename, code, {
-    lang,
-    sourcemap: false,
-    // Only TypeScript is stripped; JSX stays in the output and is lowered by
-    // the consumer's toolchain.
-    ...(lang === 'tsx' ? { jsx: 'preserve' as const } : {}),
-    // Usage-based elision would drop imports referenced only in the template,
-    // which this transform never sees.
-    typescript: { onlyRemoveTypeImports: true },
-  })
-  if (result.errors.length) {
-    throw new AggregateError(result.errors, `[vue-sfc-transformer] failed to transpile script in ${filename}`)
-  }
-  // oxc appends `export {}` when every import is elided as type-only; it is
-  // invalid in `<script setup>`, and is emitted before any trailing trivia.
-  return (result.code ?? code).replace(/^export \{\};?[ \t]*\r?\n?/m, '')
 }
 
 // A `tsx` script still contains JSX after TypeScript is stripped, so its lang
@@ -222,7 +203,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
     const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
     const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, filename) : setup
     const content = setupIsTs
-      ? await transpileScript(block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
+      ? transpileScriptBlock(block.content, setup.lang === 'tsx' ? 'tsx' : 'ts', filename)
       : block.content
     blocks.push({
       type: 'script',
@@ -235,7 +216,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
     const block = sfc.descriptor.script
     const scriptLang = block.lang === 'ts' || block.lang === 'tsx' ? block.lang : undefined
     const content = scriptLang
-      ? await transpileScript(block.content, scriptLang)
+      ? transpileScriptBlock(block.content, scriptLang, filename)
       : block.content
     blocks.push({
       type: 'script',

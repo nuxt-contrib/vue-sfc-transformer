@@ -48,7 +48,6 @@ catalogs:
     vue-tsc: 3.3.11
   peer:
     '@vue/compiler-core': 3.5.42
-    esbuild: 0.28.2
     vue: 3.5.42
   prod:
     petrea: ^0.5.1
@@ -56,5 +55,4 @@ catalogs:
 
 allowBuilds:
   '@parcel/watcher': false
-  esbuild: false
   simple-git-hooks: true
