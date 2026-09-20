@@ -13,13 +13,6 @@ import { transpileScriptBlock } from '../utils/script-transpile'
 const BACKSLASH_REGEX = /\\/g
 
 let _warnedUnusedEsbuildOptions = false
-/**
- * mkdist's own `js` loader still reads its `esbuild` option for `.ts` files,
- * but the Vue loader no longer does: script blocks are transpiled with the
- * bundled `petrea` transpiler, which has no equivalent for those options.
- * Warn once so a configured-but-ignored setup is visible instead of silently
- * changing the output relative to when `esbuild` transpiled the blocks.
- */
 function warnUnusedEsbuildOptions(options: Record<string, unknown> | undefined): void {
   if (_warnedUnusedEsbuildOptions || !options || Object.keys(options).length === 0) {
     return
