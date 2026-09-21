@@ -17,6 +17,11 @@ export interface BlockLoaderContext {
   isTs: boolean
 
   /**
+   * Whether the SFC is using JSX
+   */
+  isJsx: boolean
+
+  /**
    * Relative path to the SFC
    */
   path: string

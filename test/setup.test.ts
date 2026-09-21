@@ -19,7 +19,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineProps<{ msg: string }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineProps({
           msg: { type: String, required: true }
         })
@@ -30,7 +30,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const props = defineProps<{ msg: string }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const props = defineProps({
           msg: { type: String, required: true }
         })
@@ -41,7 +41,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const { msg } = defineProps<{ msg: string }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const { msg } = defineProps({
           msg: { type: String, required: true }
         })
@@ -52,7 +52,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const { msg = 'hello' } = defineProps<{ msg?: string }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const { msg = 'hello' } = defineProps({
           msg: { type: String, required: false }
         })
@@ -64,7 +64,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const { msg = 'hello' } = defineProps<PropsData>()</script>`,
       ].join('\n')),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const { msg = 'hello' } = defineProps({
           msg: { type: String, required: false },
           count: { type: Number, required: true }
@@ -85,7 +85,7 @@ describe('transform typescript script setup', () => {
         </script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
 
               interface AppProps<T extends string = string> {
                 locale?: Array<T>
@@ -104,7 +104,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const props = withDefaults(defineProps<{ msg?: string }>(), { msg: 'hi' })</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const props = defineProps({
           msg: { type: String, required: false, default: 'hi' }
         })
@@ -115,7 +115,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">withDefaults(defineProps<{ msg?: string }>(), { msg: 'hi' })</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineProps({
           msg: { type: String, required: false, default: 'hi' }
         })
@@ -133,7 +133,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const props = withDefaults(defineProps<{ msg?: string }>(), defaults)</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       import { mergeDefaults as _mergeDefaults } from 'vue'
       const props = defineProps(/*@__PURE__*/_mergeDefaults({
           msg: { type: String, required: false }
@@ -145,7 +145,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const props = withDefaults(defineProps<{ msg?: string }>(), { ...defaults })</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       import { mergeDefaults as _mergeDefaults } from 'vue'
       const props = defineProps(/*@__PURE__*/_mergeDefaults({
           msg: { type: String, required: false }
@@ -160,7 +160,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const emit = defineEmits<{ click: [] }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const emit = defineEmits(["click"])
       </script>"
     `)
@@ -169,7 +169,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineEmits<{ click: [] }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineEmits(["click"])
       </script>"
     `)
@@ -178,7 +178,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineEmits<{ click: [msg: string] }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineEmits(["click"])
       </script>"
     `)
@@ -187,7 +187,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineEmits<{ (e: 'click'): any }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineEmits(["click"])
       </script>"
     `)
@@ -196,7 +196,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineEmits<{ (e: 'click', msg: string): any }>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineEmits(["click"])
       </script>"
     `)
@@ -210,14 +210,14 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const model = defineModel<string>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const model = defineModel({ type: String })
       </script>"
     `)
     expect(
       await fixture(`<script setup lang="ts">defineModel<string>()</script>`),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineModel({ type: String })
       </script>"
     `)
@@ -226,7 +226,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineModel<string>('msg')</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineModel("msg", { type: String })
       </script>"
     `)
@@ -235,7 +235,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineModel<string | number | string[]>('msg')</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineModel("msg", { type: [String, Number, Array] })
       </script>"
     `)
@@ -244,7 +244,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineModel<string>({ required: true })</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineModel({ type: String, ...{ required: true } })
       </script>"
     `)
@@ -253,7 +253,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">defineModel<string>('msg', { required: true })</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       defineModel("msg", { type: String, ...{ required: true } })
       </script>"
     `)
@@ -262,7 +262,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const model = defineModel<number | undefined>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const model = defineModel({ type: null })
       </script>"
     `)
@@ -271,7 +271,7 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const model = defineModel<boolean | undefined>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const model = defineModel({ type: Boolean, skipCheck: true })
       </script>"
     `)
@@ -280,12 +280,30 @@ describe('transform typescript script setup', () => {
         `<script setup lang="ts">const model = defineModel<Function | undefined>()</script>`,
       ),
     ).toMatchInlineSnapshot(`
-      "<script setup>
+      "<script setup lang="ts">
       const model = defineModel({ type: Function, skipCheck: true })
       </script>"
     `)
 
     await expect(fixture('<script setup lang="ts">defineModel("foo", "bar")</script>')).rejects.toThrow(`[vue-sfc-transformer] defineModel()'s second argument must be an object.`)
+  })
+
+  it('keeps JSX while lowering macros in tsx script setup', async () => {
+    expect(
+      await fixture(
+        `<script setup lang="tsx">const props = defineProps<{ msg: string }>()
+const vNode = <div class={props.msg}>{props.msg}</div>
+</script>`,
+      ),
+    ).toMatchInlineSnapshot(`
+      "<script setup lang="tsx">
+      const props = defineProps({
+          msg: { type: String, required: true }
+        })
+      const vNode = <div class={props.msg}>{props.msg}</div>
+
+      </script>"
+    `)
   })
 
   it('handles edge cases in processDefineProps', async () => {
@@ -295,6 +313,29 @@ describe('transform typescript script setup', () => {
     expect(result.content).toContain('defineProps({})')
   })
 
+  it('lowers TSX macros while preserving JSX and other type syntax', async () => {
+    const { descriptor } = parse(`<script setup lang="tsx">
+const props = defineProps<{ msg: string }>()
+const emit = defineEmits<{ change: [value: number] }>()
+const vnode = <div>{props.msg as string}</div>
+</script>`)
+    const result = await preTranspileScriptSetup(descriptor, 'test.vue')
+
+    expect(result.lang).toBe('tsx')
+    expect(result.content).toContain('msg: { type: String, required: true }')
+    expect(result.content).toContain('defineEmits(["change"])')
+    expect(result.content).toContain('<div>{props.msg as string}</div>')
+    expect(result.content).not.toMatch(/define(?:Props|Emits)</)
+  })
+
+  it('preserves a JSX script setup', async () => {
+    const { descriptor } = parse('<script setup lang="jsx">const vnode = <div>hi</div></script>')
+    const result = await preTranspileScriptSetup(descriptor, 'test.vue')
+
+    expect(result.lang).toBe('jsx')
+    expect(result.content).toBe('const vnode = <div>hi</div>')
+  })
+
   async function fixture(src: string): Promise<string> {
     const sfc = parse(src, {
       filename: 'test.vue',
@@ -302,7 +343,15 @@ describe('transform typescript script setup', () => {
     })
     if (sfc.descriptor.scriptSetup) {
       const result = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
-      return `<script setup>\n${result.content}\n</script>`
+
+      // NOTE: the lang transform does not happen in
+      // `preTranspileScriptSetup`, so it should be keep as-is.
+      let langAttr = ''
+      if (result.lang) {
+        langAttr = ` lang="${result.lang}"`
+      }
+
+      return `<script setup${langAttr}>\n${result.content}\n</script>`
     }
     return src
   }
