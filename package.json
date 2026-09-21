@@ -31,7 +31,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "build": "tsdown",
@@ -50,7 +50,6 @@
     "@volar/typescript": "^2.4.0",
     "@vue/compiler-core": "^3.5.13",
     "@vue/language-core": "^3.0.0",
-    "esbuild": "*",
     "rolldown": ">=1.0.0-beta.0",
     "typescript": ">=5.0.0",
     "vue": "^3.5.13"
@@ -62,9 +61,6 @@
     "@vue/language-core": {
       "optional": true
     },
-    "esbuild": {
-      "optional": true
-    },
     "rolldown": {
       "optional": true
     },
@@ -73,6 +69,7 @@
     }
   },
   "dependencies": {
+    "petrea": "catalog:prod",
     "tinyglobby": "catalog:prod"
   },
   "devDependencies": {
@@ -84,7 +81,6 @@
     "@vue/compiler-core": "catalog:peer",
     "@vue/compiler-dom": "catalog:dev",
     "@vue/language-core": "catalog:dev",
-    "esbuild": "catalog:peer",
     "eslint": "catalog:dev",
     "exsolve": "catalog:dev",
     "installed-check": "catalog:dev",

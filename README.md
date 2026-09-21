@@ -19,12 +19,10 @@ npm install vue-sfc-transformer vue @vue/compiler-core
 pnpm install vue-sfc-transformer vue @vue/compiler-core
 ```
 
-A TypeScript transpiler is needed to strip types from script blocks and template expressions. `rolldown` and `esbuild` are both optional peer dependencies; install whichever suits your setup. The `mkdist` loader uses `rolldown/utils` when it is available, and `esbuild` otherwise (or when mkdist's `esbuild` options are set).
+TypeScript types in template expressions are stripped by `petrea` transpiler, which blanks them in place to preserve line and column positions.
 
 ```js
 import { parse as parseSFC } from '@vue/compiler-sfc'
-import { transform } from 'rolldown/utils'
-
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
 
 const src = `
@@ -49,17 +47,9 @@ const templateBlockContents = await transpileVueTemplate(
   sfc.descriptor.template.content,
   sfc.descriptor.template.ast,
   sfc.descriptor.template.loc.start.offset,
-  async (code) => {
-    const res = await transform('__sfc.ts', code, {
-      lang: 'ts',
-      sourcemap: false,
-      typescript: { onlyRemoveTypeImports: true },
-    })
-    return res.code
-  },
 )
 console.log(templateBlockContents)
-// <div v-if="test" />
+//   <div v-if="test       " />
 
 const { content: scriptBlockContents } = await preTranspileScriptSetup(sfc.descriptor, 'test.vue')
 console.log(scriptBlockContents)
@@ -80,7 +70,7 @@ import { vueLoader } from 'vue-sfc-transformer/mkdist'
 
 `vue-sfc-transformer/rolldown` ships a [rolldown](https://github.com/rolldown/rolldown) plugin that transpiles `<script lang="ts">` and template expressions, then emits a `<name>.d.vue.ts` declaration for each SFC under `srcDir`. That's the form `vue-tsc` / `@vue/language-core` / `@volar/typescript` (since 2.4.19) resolve for `import './Foo.vue'`. Pass `emitLegacyDeclarationAlias: true` to also emit the older `<name>.vue.d.ts` form, which plain `tsc` resolves but vue-tsc does not.
 
-Script blocks are transpiled with `verbatimModuleSyntax` semantics: only explicit `import type` statements and inline `type` specifiers are removed. A type-only import written without the `type` keyword (`import { Props } from './types'`) survives into the emitted SFC as a runtime import and will fail to resolve at runtime; make sure to write `import type` for types.
+Script blocks are transpiled by the `petrea` transpiler with `verbatimModuleSyntax` semantics: only explicit `import type` statements and inline `type` specifiers are removed. A type-only import written without the `type` keyword (`import { Props } from './types'`) survives into the emitted SFC as a runtime import and will fail to resolve at runtime; make sure to write `import type` for types.
 
 Works with anything that runs rolldown plugins: [tsdown](https://github.com/rolldown/tsdown), [obuild](https://github.com/unjs/obuild) or rolldown directly.
 
