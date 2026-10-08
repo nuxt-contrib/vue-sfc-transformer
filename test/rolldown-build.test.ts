@@ -369,4 +369,77 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(output).not.toMatch(/augment\.mts\.js/)
     expect(output).toMatch(/augment\.js/)
   })
+
+  describe('jsx / tsx', () => {
+    it('preserves JSX and its script language', async () => {
+      const output = await fixture('<script setup lang="jsx">const vnode = <div>hi</div></script>')
+      const { scriptSetup } = parse(output).descriptor
+
+      expect(scriptSetup?.lang).toBe('jsx')
+      expect(scriptSetup?.content).toContain('<div>hi</div>')
+    })
+
+    it('converts TSX macros and types while preserving JSX', async () => {
+      const output = await fixture(`<script setup lang="tsx">
+  const props = defineProps<{ msg: string }>()
+  const emit = defineEmits<{ change: [value: number] }>()
+  const vnode = <div>{props.msg as string}</div>
+  </script>`)
+      const { scriptSetup } = parse(output).descriptor
+
+      expect(scriptSetup?.content).toContain('type: String')
+      expect(scriptSetup?.content).toContain('defineEmits(["change"])')
+      expect(scriptSetup?.content).toContain('<div>{props.msg}</div>')
+      expect(scriptSetup?.content).not.toMatch(/define(?:Props|Emits)</)
+      expect(scriptSetup?.content).not.toContain('as string')
+      expect(scriptSetup?.lang).toBe('jsx')
+    })
+
+    it('converts TSX macros even without JSX syntax', async () => {
+      const output = await fixture('<script setup lang="tsx">defineProps<{ msg: string }>()</script>')
+      const { scriptSetup } = parse(output).descriptor
+
+      expect(scriptSetup?.content).toContain('type: String')
+      expect(scriptSetup?.content).not.toContain('defineProps()')
+      expect(scriptSetup?.content).not.toContain('defineProps<')
+      expect(scriptSetup?.lang).toBe('jsx')
+    })
+
+    it('removes template type syntax in a TSX SFC', async () => {
+      const output = await fixture(`<script setup lang="tsx">const msg = 'hi'</script>
+  <template><div>{{ (msg as string).length }}</div></template>`)
+      const { template } = parse(output).descriptor
+
+      expect(template?.content).toContain('msg')
+      expect(template?.content).toContain('.length')
+      expect(template?.content).not.toContain('as string')
+    })
+
+    async function fixture(source: string): Promise<string> {
+      const jsxRoot = join(root, 'jsx-tsx')
+      await rm(jsxRoot, { force: true, recursive: true })
+      await mkdir(join(jsxRoot, 'src'), { recursive: true })
+      await writeFile(join(jsxRoot, 'src/index.ts'), 'export const x = 1\n')
+      await writeFile(join(jsxRoot, 'src/Component.vue'), source)
+      // Declaration emission must respect the project's Vue JSX options.
+      await writeFile(join(jsxRoot, 'tsconfig.json'), JSON.stringify({
+        compilerOptions: { jsx: 'preserve', jsxImportSource: 'vue' },
+      }))
+
+      await build({
+        cwd: jsxRoot,
+        entry: ['src/index.ts'],
+        outDir: 'dist',
+        logLevel: 'silent',
+        plugins: [vueSfcPlugin({ srcDir: 'src', cwd: jsxRoot, tsconfig: 'tsconfig.json', cache: false })],
+      })
+
+      const dts = await readFile(join(jsxRoot, 'dist/Component.d.vue.ts'), 'utf8')
+      expect(dts).toContain('DefineComponent')
+      if (source.includes('defineProps<')) {
+        expect(dts).toContain('msg: string')
+      }
+      return await readFile(join(jsxRoot, 'dist/Component.vue'), 'utf8')
+    }
+  })
 })
