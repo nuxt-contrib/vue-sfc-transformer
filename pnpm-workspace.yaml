@@ -16,7 +16,7 @@ catalogs:
   dev:
     '@antfu/eslint-config': 9.3.0
     '@babel/types': 7.29.8
-    '@types/node': 24.13.3
+    '@types/node': 26.6.6
     '@vitest/coverage-v8': 5.0.5
     '@volar/typescript': 2.4.28
     '@vue/compiler-dom': 3.5.42
