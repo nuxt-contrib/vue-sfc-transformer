@@ -1,10 +1,10 @@
 import type { Plugin } from 'rolldown'
+import type { transform as rolldownTransform } from 'rolldown/utils'
 import type { DtsCache } from '../dts/cache'
 
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
 
-import { transform } from 'rolldown/utils'
 import { glob } from 'tinyglobby'
 import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
 import { parse } from 'vue/compiler-sfc'
@@ -50,9 +50,22 @@ export interface VueSfcPluginOptions {
   // `tsc`) at the `Foo.vue.d.ts` alias instead of a bare `.vue` specifier
   // that resolves to the runtime SFC.
   emitLegacyDeclarationAlias?: boolean
+  // `transform` from `rolldown/utils`, used to strip TypeScript from script
+  // blocks and template expressions. Pass the one from the rolldown running
+  // the build so that only one copy of rolldown is loaded. Defaults to the
+  // `rolldown` peer dependency, imported on first use.
+  transform?: Transform
 }
 
-async function transpileScript(code: string, lang: 'ts' | 'tsx' = 'ts', filename = `__sfc.${lang}`): Promise<string> {
+type Transform = typeof rolldownTransform
+
+let defaultTransform: Promise<Transform> | undefined
+function loadDefaultTransform(): Promise<Transform> {
+  defaultTransform ??= import('rolldown/utils').then(r => r.transform)
+  return defaultTransform
+}
+
+async function transpileScript(transform: Transform, code: string, lang: 'ts' | 'tsx' = 'ts', filename = `__sfc.${lang}`): Promise<string> {
   const result = await transform(filename, code, {
     lang,
     sourcemap: false,
@@ -155,13 +168,14 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         return
       }
 
+      const transform = pluginOptions.transform ?? await loadDefaultTransform()
       const rawSources = new Map<string, string>()
       const runtimeByFile = new Map<string, string>()
 
       await Promise.all(files.map(async (file) => {
         const raw = await readFile(file, 'utf8')
         rawSources.set(file, raw)
-        const { runtime, errors } = await transformVueSfc(raw, file)
+        const { runtime, errors } = await transformVueSfc(raw, file, transform)
         for (const error of errors) {
           this.error({ message: `[vue-sfc-transformer] ${file}: ${error.message}`, id: file })
         }
@@ -200,7 +214,7 @@ interface TransformResult {
   errors: Error[]
 }
 
-async function transformVueSfc(input: string, filename: string): Promise<TransformResult> {
+async function transformVueSfc(input: string, filename: string, transform: Transform): Promise<TransformResult> {
   const errors: Error[] = []
   const sfc = parse(input, { filename, ignoreEmpty: true })
   if (sfc.errors.length) {
@@ -222,7 +236,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
     const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
     const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, filename) : setup
     const content = setupIsTs
-      ? await transpileScript(block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
+      ? await transpileScript(transform, block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
       : block.content
     blocks.push({
       type: 'script',
@@ -235,7 +249,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
     const block = sfc.descriptor.script
     const scriptLang = block.lang === 'ts' || block.lang === 'tsx' ? block.lang : undefined
     const content = scriptLang
-      ? await transpileScript(block.content, scriptLang)
+      ? await transpileScript(transform, block.content, scriptLang)
       : block.content
     blocks.push({
       type: 'script',
@@ -247,7 +261,7 @@ async function transformVueSfc(input: string, filename: string): Promise<Transfo
   if (sfc.descriptor.template) {
     const block = sfc.descriptor.template
     const content = isTs && block.ast
-      ? await transpileVueTemplate(block.content, block.ast, block.loc.start.offset, async code => transpileScript(code))
+      ? await transpileVueTemplate(block.content, block.ast, block.loc.start.offset, async code => transpileScript(transform, code))
       : block.content
     blocks.push({
       type: 'template',

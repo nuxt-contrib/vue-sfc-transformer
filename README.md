@@ -99,6 +99,14 @@ export default defineConfig({
 })
 ```
 
+Scripts are transpiled with `transform` from `rolldown/utils`, imported from this package's `rolldown` peer dependency. If that resolves to a different copy of rolldown than the one running the build, pass the build's own `transform` so that only one copy is loaded:
+
+```ts
+import { transform } from 'rolldown/utils'
+
+vueSfcPlugin({ srcDir: 'src', transform })
+```
+
 Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely.
 
 Pass `cache: false` to disable. Pass `cacheVersion: '<your-string>'` to namespace the cache under your control on top of the auto-derivation.
