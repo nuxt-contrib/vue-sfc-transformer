@@ -178,6 +178,14 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     expect(dts).toContain('DefineComponent')
   })
 
+  it('emits a declaration for an SFC with a side-effect stylesheet import', { timeout: 50_000 }, async () => {
+    const id = join(dir, 'Styled.vue')
+    const source = `<script setup lang="ts">import './styled.css'\ndefineProps<{ msg: string }>()</script><template><div>{{ msg }}</div></template>`
+    await writeFile(id, source)
+    const result = await emitVueDeclarations([{ id, source }], { rootDir: dir, cache: false })
+    expect(result.get(id)).toContain('msg')
+  })
+
   it('resolves path aliases from tsconfig.compilerOptions.paths in emitted declarations', { timeout: 50_000 }, async () => {
     const root = join(dir, 'paths-test')
     await mkdir(root, { recursive: true })
