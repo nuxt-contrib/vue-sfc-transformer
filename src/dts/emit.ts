@@ -1,4 +1,5 @@
 import type { DtsCache } from './cache'
+import type { DeclarationProject } from './project'
 
 import * as volarTs from '@volar/typescript'
 import * as vueLanguageCore from '@vue/language-core'
@@ -6,7 +7,7 @@ import ts from 'typescript'
 
 import { join, normalize } from '../utils/path'
 import { createFileSystemDtsCache, hashSfc } from './cache'
-import { readTsconfigJson } from './tsconfig'
+import { resolveDeclarationProjects } from './project'
 import { getAutoCacheVersion } from './version'
 
 export type VueTscRunner = (
@@ -23,7 +24,8 @@ export interface EmitVueDeclarationsOptions {
   cache?: DtsCache | false
   // Optional extra string mixed into the cache key, on top of an auto-derived
   // version that already covers this package, `@vue/language-core`,
-  // `@volar/typescript`, `typescript`, and the resolved `vueCompilerOptions`.
+  // `@volar/typescript`, `typescript`, and the resolved compiler options and
+  // `vueCompilerOptions`.
   // Use this only when you want an additional invalidation namespace under
   // your own control (e.g. "bump when this codegen helper changes").
   cacheVersion?: string
@@ -31,41 +33,58 @@ export interface EmitVueDeclarationsOptions {
   runner?: VueTscRunner
 }
 
+// Declarations are read back from next to each source file, and errors in
+// other files of the project must not suppress their emit.
+const DECLARATION_EMIT_OPTIONS: ts.CompilerOptions = {
+  allowNonTsExtensions: true,
+  composite: false,
+  declaration: true,
+  declarationDir: undefined,
+  declarationMap: false,
+  emitDeclarationOnly: true,
+  incremental: false,
+  noEmit: false,
+  noEmitOnError: false,
+  outDir: undefined,
+  outFile: undefined,
+  rootDir: undefined,
+  tsBuildInfoFile: undefined,
+}
+
 const runVueTsc: VueTscRunner = (files, options) => {
+  const projects = resolveDeclarationProjects(options.rootDir, options.tsconfig)
+  const projectFileNames = projects.map(project => new Set(project.fileNames))
+  const groups = new Map<DeclarationProject, typeof files>()
+  for (const file of files) {
+    const id = normalize(file.id)
+    const project = projects[projectFileNames.findIndex(fileNames => fileNames.has(id))] ?? projects[0]!
+    groups.set(project, [...groups.get(project) ?? [], file])
+  }
+
+  const out = new Map<string, string>()
+  for (const [project, group] of groups) {
+    for (const [id, dts] of emitProjectDeclarations(project, group, options.rootDir)) {
+      out.set(id, dts)
+    }
+  }
+  return out
+}
+
+function emitProjectDeclarations(
+  project: DeclarationProject,
+  files: Array<{ id: string, source: string }>,
+  rootDir: string,
+): Map<string, string> {
   const vfs = new Map<string, string>()
   for (const file of files) {
     vfs.set(normalize(file.id), file.source)
   }
 
-  const parsed = vueLanguageCore.createParsedCommandLineByJson(
-    ts,
-    ts.sys,
-    options.rootDir,
-    readTsconfigJson(options.tsconfig),
-    options.tsconfig,
-  )
-
-  // Mix the user's path-resolution options (`baseUrl`, `paths`,
-  // `pathsBasePath`) into our hardcoded compiler options so imports like
-  // `import type { Foo } from '#alias'` resolve when emitting declarations.
   const compilerOptions: ts.CompilerOptions = {
-    allowJs: true,
-    allowImportingTsExtensions: true,
-    allowNonTsExtensions: true,
-    declaration: true,
-    emitDeclarationOnly: true,
-    noEmit: false,
-    noUncheckedSideEffectImports: false,
-    skipLibCheck: true,
-    strictNullChecks: true,
-    target: ts.ScriptTarget.ESNext,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    jsx: parsed.options.jsx ?? ts.JsxEmit.Preserve,
-    jsxImportSource: parsed.options.jsxImportSource ?? 'vue',
-    ...(parsed.options.baseUrl !== undefined && { baseUrl: parsed.options.baseUrl }),
-    ...(parsed.options.paths !== undefined && { paths: parsed.options.paths }),
-    ...(parsed.options.pathsBasePath !== undefined && { pathsBasePath: parsed.options.pathsBasePath }),
+    ...project.options,
+    jsx: project.options.jsx ?? ts.JsxEmit.Preserve,
+    jsxImportSource: project.options.jsxImportSource ?? 'vue',
+    ...DECLARATION_EMIT_OPTIONS,
   }
 
   const tsHost = ts.createCompilerHost(compilerOptions)
@@ -83,7 +102,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
   const originalFileExists = tsHost.fileExists.bind(tsHost)
   tsHost.fileExists = filename => vfs.has(normalize(filename)) || originalFileExists(filename)
 
-  const rootNames = files.map(f => normalize(f.id))
+  const rootNames = [...new Set([...project.fileNames, ...files.map(f => normalize(f.id)).sort()])]
   const createProgram = volarTs.proxyCreateProgram(
     ts,
     ts.createProgram,
@@ -91,7 +110,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
       const vueLanguagePlugin = vueLanguageCore.createVueLanguagePlugin(
         tsRef,
         programOptions.options,
-        parsed.vueOptions,
+        project.vueOptions,
         (id: string) => id,
       )
       return [vueLanguagePlugin]
@@ -117,7 +136,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
   }
   if (emitSkipped || errorDiagnostics.length) {
     throw new Error(`[vue-sfc-transformer] failed to emit Vue declarations:\n${
-      formatDiagnostics(errorDiagnostics, options.rootDir)}`)
+      formatDiagnostics(errorDiagnostics, rootDir)}`)
   }
 
   const out = new Map<string, string>()

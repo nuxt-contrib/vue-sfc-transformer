@@ -2,7 +2,7 @@ import type { DtsCache } from '../src/dts/cache'
 import type { EmitVueDeclarationsOptions, VueTscRunner } from '../src/dts/emit'
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -254,5 +254,125 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
       rootDir: root,
       cache: false,
     })).rejects.toThrow(/Cannot find module|#missing|diagnostic/i)
+  })
+})
+
+describe('emitVueDeclarations (project tsconfig)', () => {
+  const dir = fileURLToPath(new URL('../node_modules/.tmp/dts-emit-project', import.meta.url))
+
+  beforeAll(async () => {
+    await rm(dir, { force: true, recursive: true })
+  })
+  afterAll(async () => {
+    await rm(dir, { force: true, recursive: true })
+  })
+
+  async function emitFixture(name: string, files: Record<string, string>, tsconfig = 'tsconfig.json'): Promise<string | undefined> {
+    const root = join(dir, name)
+    for (const [path, contents] of Object.entries(files)) {
+      await mkdir(dirname(join(root, path)), { recursive: true })
+      await writeFile(join(root, path), contents)
+    }
+    const id = join(root, 'src/Component.vue')
+    const result = await emitVueDeclarations([{ id, source: files['src/Component.vue']! }], {
+      rootDir: root,
+      tsconfig: join(root, tsconfig),
+      cache: false,
+    })
+    return result.get(id)
+  }
+
+  const usesAmbientType = [
+    '<script setup lang="ts">',
+    'defineProps<{ size: AmbientSize }>()',
+    '</script>',
+    '<template><div /></template>',
+  ].join('\n')
+
+  it('includes ambient declarations from the tsconfig `include`', { timeout: 50_000 }, async () => {
+    const dts = await emitFixture('ambient', {
+      'tsconfig.json': JSON.stringify({ include: ['src', 'types'] }),
+      'types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
+      'src/Component.vue': usesAmbientType,
+    })
+    expect(dts).toContain('AmbientSize')
+  })
+
+  it('uses the `noUncheckedSideEffectImports` setting of the project', { timeout: 50_000 }, async () => {
+    const files = (noUncheckedSideEffectImports: boolean) => ({
+      'tsconfig.json': JSON.stringify({ compilerOptions: { noUncheckedSideEffectImports }, include: ['src'] }),
+      'src/Component.vue': `<script setup lang="ts">import './styles.css'\ndefineProps<{ msg: string }>()</script><template><div /></template>`,
+    })
+    expect(await emitFixture('side-effect-imports-unchecked', files(false))).toContain('msg: string')
+    await expect(emitFixture('side-effect-imports-checked', files(true))).rejects.toThrow('TS2882')
+  })
+
+  it('uses the strictness of the project', { timeout: 50_000 }, async () => {
+    const dts = await emitFixture('not-strict', {
+      'tsconfig.json': JSON.stringify({ compilerOptions: { strict: false }, include: ['src'] }),
+      'src/Component.vue': [
+        '<script setup lang="ts">',
+        'const found = [1, 2].find(n => n > 1)',
+        'const fixed = found.toFixed()',
+        '</script>',
+        '<template><div>{{ fixed }}</div></template>',
+      ].join('\n'),
+    })
+    expect(dts).toContain('DefineComponent')
+  })
+
+  it('ignores errors in other files of the project', { timeout: 50_000 }, async () => {
+    const dts = await emitFixture('unrelated-errors', {
+      'tsconfig.json': JSON.stringify({ include: ['src', 'types'] }),
+      'types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
+      'src/server.ts': `export const port: number = 'invalid'\n`,
+      'src/Component.vue': usesAmbientType,
+    })
+    expect(dts).toContain('AmbientSize')
+  })
+
+  it('emits declarations whatever the project emit settings', { timeout: 50_000 }, async () => {
+    const dts = await emitFixture('emit-settings', {
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: {
+          noEmit: true,
+          noEmitOnError: true,
+          declaration: false,
+          declarationMap: true,
+          composite: true,
+          outDir: './dist',
+          declarationDir: './dist/types',
+          rootDir: './server',
+        },
+        include: ['src', 'types'],
+      }),
+      'types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
+      'src/server.ts': `export const port: number = 'invalid'\n`,
+      'src/Component.vue': usesAmbientType,
+    })
+    expect(dts).toContain('AmbientSize')
+    expect(dts).not.toContain('sourceMappingURL')
+  })
+
+  it('still fails on errors in the emitted SFCs', { timeout: 50_000 }, async () => {
+    await expect(emitFixture('sfc-errors', {
+      'tsconfig.json': JSON.stringify({ include: ['src'] }),
+      'src/Component.vue': '<script setup lang="ts">const n: number = \'one\'</script><template><div>{{ n }}</div></template>',
+    })).rejects.toThrow(/Component\.vue.*TS2322/)
+  })
+
+  it('resolves the projects referenced by a solution-style tsconfig', { timeout: 50_000 }, async () => {
+    const dts = await emitFixture('solution', {
+      'tsconfig.json': JSON.stringify({
+        files: [],
+        references: [{ path: './.nuxt/tsconfig.server.json' }, { path: './.nuxt/tsconfig.app.json' }],
+      }),
+      '.nuxt/tsconfig.server.json': JSON.stringify({ include: ['../server'] }),
+      '.nuxt/tsconfig.app.json': JSON.stringify({ include: ['../src', './types'] }),
+      '.nuxt/types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
+      'server/index.ts': 'export {}\n',
+      'src/Component.vue': usesAmbientType,
+    })
+    expect(dts).toContain('AmbientSize')
   })
 })

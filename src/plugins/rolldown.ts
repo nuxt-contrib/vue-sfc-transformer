@@ -25,12 +25,15 @@ export interface VueSfcPluginOptions {
   cache?: DtsCache | false
   // Extra string mixed into the cache key. The cache already invalidates on
   // version changes to this package, `@vue/language-core`, `@volar/typescript`,
-  // `typescript`, and the resolved `vueCompilerOptions`; pass this only when
-  // you want an additional namespace under your own control.
+  // `typescript`, and the resolved compiler options and `vueCompilerOptions`;
+  // pass this only when you want an additional namespace under your own
+  // control.
   cacheVersion?: string
-  // Path to a tsconfig.json. Its `vueCompilerOptions` (including any
-  // `extends` chain) are passed to `@vue/language-core` for both emission
-  // and cache-key derivation. Throws if the file is missing or unparseable.
+  // Path to a tsconfig.json. Declarations are emitted from the project it
+  // describes: its compiler options, `vueCompilerOptions` and files (including
+  // any `extends` chain), or the projects it references when it has no files
+  // of its own. Only errors in the emitted SFCs fail the build. Throws if the
+  // file is missing or unparseable.
   tsconfig?: string
   // Imports matching any of these RegExps are kept as external relative .js
   // imports (with their `.ts` extension swapped for `.js`) rather than being

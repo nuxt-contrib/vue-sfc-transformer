@@ -1,4 +1,5 @@
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
@@ -25,6 +26,15 @@ describe('getAutoCacheVersion', () => {
     expect(v).toMatch(/@volar\/typescript=\d/)
     expect(v).toMatch(/typescript=\d/)
     expect(v).toMatch(/vueCompilerOptions=[a-f0-9]+/)
+  })
+
+  it('changes with the compiler options of the tsconfig', async () => {
+    await writeFile(join(dir, 'strict.json'), JSON.stringify({ compilerOptions: { strict: true }, files: [] }))
+    await writeFile(join(dir, 'loose.json'), JSON.stringify({ compilerOptions: { strict: false }, files: [] }))
+    const strict = getAutoCacheVersion({ rootDir: dir, tsconfig: join(dir, 'strict.json') })
+    const loose = getAutoCacheVersion({ rootDir: dir, tsconfig: join(dir, 'loose.json') })
+    expect(strict).toMatch(/compilerOptions=[a-f0-9]+/)
+    expect(strict).not.toBe(loose)
   })
 
   it('memoises across calls', () => {
