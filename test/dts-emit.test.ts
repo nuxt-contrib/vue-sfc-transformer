@@ -220,6 +220,22 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     expect(dts).toContain('ButtonProps')
   })
 
+  it('ignores errors in files other than the emitted SFCs', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'unrelated-errors')
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, 'types.ts'), [
+      'export interface Props { msg: string }',
+      'export const broken: number = \'not a number\'',
+    ].join('\n'))
+
+    const id = join(root, 'Hello.vue')
+    const source = `<script setup lang="ts">import type { Props } from './types'\ndefineProps<Props>()</script><template><div>{{ msg }}</div></template>`
+    await writeFile(id, source)
+
+    const result = await emitVueDeclarations([{ id, source }], { rootDir: root, cache: false })
+    expect(result.get(id)).toContain('Props')
+  })
+
   it('fails when TypeScript reports declaration emit diagnostics', { timeout: 50_000 }, async () => {
     const root = join(dir, 'diagnostics-test')
     await mkdir(root, { recursive: true })

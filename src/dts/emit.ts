@@ -99,12 +99,25 @@ const runVueTsc: VueTscRunner = (files, options) => {
   )
 
   const program = createProgram({ rootNames, options: compilerOptions, host: tsHost })
-  const emitResult = program.emit()
-  const diagnostics = [...ts.getPreEmitDiagnostics(program), ...emitResult.diagnostics]
+  const diagnostics: ts.Diagnostic[] = []
+  let emitSkipped = false
+  const emitted = new Set(files.map(file => normalize(file.id)))
+  for (const sourceFile of program.getSourceFiles()) {
+    if (!emitted.has(normalize(sourceFile.fileName))) {
+      continue
+    }
+    diagnostics.push(...program.getSyntacticDiagnostics(sourceFile), ...program.getSemanticDiagnostics(sourceFile))
+    const emitResult = program.emit(sourceFile)
+    emitSkipped ||= emitResult.emitSkipped
+    diagnostics.push(...emitResult.diagnostics)
+  }
   const errorDiagnostics = diagnostics.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error)
-  if (emitResult.emitSkipped || errorDiagnostics.length) {
+  if (emitSkipped && !errorDiagnostics.length) {
+    errorDiagnostics.push(...program.getOptionsDiagnostics(), ...program.getGlobalDiagnostics())
+  }
+  if (emitSkipped || errorDiagnostics.length) {
     throw new Error(`[vue-sfc-transformer] failed to emit Vue declarations:\n${
-      formatDiagnostics(errorDiagnostics.length ? errorDiagnostics : diagnostics, options.rootDir)}`)
+      formatDiagnostics(errorDiagnostics, options.rootDir)}`)
   }
 
   const out = new Map<string, string>()
