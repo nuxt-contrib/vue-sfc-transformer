@@ -46,17 +46,21 @@ describe('vueSfcPlugin `transform` option', { timeout: 60_000 }, () => {
     expect(spy).toHaveBeenCalled()
     const output = await readFile(join(root, 'dist/Hello.vue'), 'utf8')
     expect(output).toContain('const msg = "hi"')
-    expect(output).toContain('{{ msg }}')
+    expect(output).toContain('{{ (msg          ) }}')
     expect(output).not.toContain('lang="ts"')
   })
 
-  it('falls back to the `rolldown/utils` peer dependency', async () => {
-    await expect(build({
+  it('strips TypeScript with petrea without loading `rolldown/utils` by default', async () => {
+    await build({
       cwd: root,
       entry: ['src/index.ts'],
       outDir: 'dist-default',
       logLevel: 'silent',
       plugins: [vueSfcPlugin({ srcDir: 'src', cwd: root, cache: false })],
-    })).rejects.toThrow('should not be loaded')
+    })
+
+    const output = await readFile(join(root, 'dist-default/Hello.vue'), 'utf8')
+    expect(output).toMatch(/const msg\s+= ['"]hi['"]/)
+    expect(output).not.toContain('lang="ts"')
   })
 })
