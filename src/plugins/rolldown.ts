@@ -59,6 +59,18 @@ export interface VueSfcPluginOptions {
 
 type Transform = typeof rolldownTransform
 
+const EMPTY_ENTRY_ID = '\0vue-sfc-transformer:empty-entry'
+
+/**
+ * An entry for builds whose source tree may contain no script files, only
+ * `.vue` files. Pass it as tsdown's `entry` (or rolldown's `input`), or add it
+ * alongside other entries. `vueSfcPlugin` resolves it to an empty module and
+ * removes its chunk from the output.
+ */
+export const emptyEntry: Record<string, string> = {
+  'vue-sfc-transformer-empty-entry': EMPTY_ENTRY_ID,
+}
+
 let defaultTransform: Promise<Transform> | undefined
 function loadDefaultTransform(): Promise<Transform> {
   defaultTransform ??= import('rolldown/utils').then(r => r.transform)
@@ -129,6 +141,9 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
   return {
     name: 'vue-sfc-transformer:vue-sfc',
     async resolveId(id, importer, resolveOptions) {
+      if (id === EMPTY_ENTRY_ID) {
+        return id
+      }
       if (/\.vue(?:\?|$)/.test(id)) {
         if (pluginOptions.emitLegacyDeclarationAlias && importer && /\.d\.[cm]?ts$/.test(importer)) {
           return { id: `${id}.js`, external: 'relative' }
@@ -203,6 +218,21 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         this.emitFile({ type: 'asset', fileName: rel.replace(/\.vue$/, '.d.vue.ts'), source: dts })
         if (pluginOptions.emitLegacyDeclarationAlias) {
           this.emitFile({ type: 'asset', fileName: `${rel}.d.ts`, source: dts })
+        }
+      }
+    },
+    load: {
+      filter: { id: /^\0vue-sfc-transformer:empty-entry$/ },
+      handler(id) {
+        if (id === EMPTY_ENTRY_ID) {
+          return { code: 'export {}', moduleSideEffects: false }
+        }
+      },
+    },
+    generateBundle(_outputOptions, bundle) {
+      for (const [fileName, output] of Object.entries(bundle)) {
+        if (output.type === 'chunk' && output.facadeModuleId === EMPTY_ENTRY_ID) {
+          delete bundle[fileName]
         }
       }
     },

@@ -107,6 +107,20 @@ import { transform } from 'rolldown/utils'
 vueSfcPlugin({ srcDir: 'src', transform })
 ```
 
+`.vue` files are emitted by the plugin and should not be listed as entries. To build a directory that may contain no script files at all, add `emptyEntry` to the entries. The plugin resolves it to an empty module and removes its chunk from the output. tsdown's CommonJS declaration build (`format: 'cjs'` with `dts`) does not run plugins, so it also needs `dts.entry` patterns that leave `emptyEntry` out.
+
+```ts
+import { defineConfig } from 'tsdown'
+import { emptyEntry, vueSfcPlugin } from 'vue-sfc-transformer/rolldown'
+
+export default defineConfig({
+  entry: ['src/runtime/**/*.ts', emptyEntry],
+  root: 'src/runtime',
+  unbundle: true,
+  plugins: [vueSfcPlugin({ srcDir: 'src/runtime' })],
+})
+```
+
 Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely.
 
 Pass `cache: false` to disable. Pass `cacheVersion: '<your-string>'` to namespace the cache under your control on top of the auto-derivation.
