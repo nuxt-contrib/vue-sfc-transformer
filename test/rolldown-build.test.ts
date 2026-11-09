@@ -205,6 +205,43 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     expect(dts).toContain('#button')
   })
 
+  it('resolves self-references through `paths`', async () => {
+    const selfRoot = join(root, 'self-reference')
+    await rm(selfRoot, { force: true, recursive: true })
+    await mkdir(join(selfRoot, 'src/runtime'), { recursive: true })
+    await writeFile(join(selfRoot, 'package.json'), JSON.stringify({
+      name: 'my-module',
+      type: 'module',
+      exports: { '.': './dist/module.mjs', './runtime/*': './dist/runtime/*' },
+    }))
+    await writeFile(join(selfRoot, 'tsconfig.json'), JSON.stringify({ include: ['src'] }))
+    await writeFile(join(selfRoot, 'src/module.ts'), `export interface ModuleOptions { size: 'sm' | 'lg' }\n`)
+    await writeFile(join(selfRoot, 'src/runtime/index.ts'), 'export const x = 1\n')
+    await writeFile(join(selfRoot, 'src/runtime/Sized.vue'), [
+      '<script setup lang="ts">',
+      `import type { ModuleOptions } from 'my-module'`,
+      `defineProps<{ size: ModuleOptions['size'] }>()`,
+      '</script>',
+      '<template><div /></template>',
+    ].join('\n'))
+
+    const options: VueSfcPluginOptions = { srcDir: 'src/runtime', cwd: selfRoot, tsconfig: 'tsconfig.json', cache: false }
+    const buildWith = (pluginOptions: VueSfcPluginOptions) => build({
+      cwd: selfRoot,
+      entry: ['src/runtime/index.ts'],
+      outDir: 'dist',
+      logLevel: 'silent',
+      plugins: [vueSfcPlugin(pluginOptions)],
+    })
+
+    await expect(buildWith(options)).rejects.toThrow(`Cannot find module 'my-module'`)
+    await buildWith({ ...options, paths: { 'my-module': ['./src/module.ts'] } })
+
+    const dts = await readFile(join(selfRoot, 'dist/Sized.d.vue.ts'), 'utf8')
+    expect(dts).toContain(`from 'my-module'`)
+    expect(dts).toContain('ModuleOptions')
+  })
+
   it('preserves imports that are referenced only in the template', async () => {
     const templateOnlyRoot = join(root, 'template-only-import')
     await rm(templateOnlyRoot, { force: true, recursive: true })

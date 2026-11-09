@@ -23,13 +23,24 @@ const DEFAULT_COMPILER_OPTIONS: ts.CompilerOptions = {
   moduleResolution: ts.ModuleResolutionKind.Bundler,
 }
 
-export function resolveDeclarationProjects(rootDir: string, tsconfig: string | undefined): DeclarationProject[] {
-  if (!tsconfig) {
-    const { vueOptions } = vueLanguageCore.createParsedCommandLineByJson(ts, ts.sys, rootDir, {})
-    return [{ options: DEFAULT_COMPILER_OPTIONS, fileNames: [], vueOptions }]
-  }
+export function resolveDeclarationProjects(
+  rootDir: string,
+  tsconfig: string | undefined,
+  paths?: Record<string, string[]>,
+): DeclarationProject[] {
   const projects: DeclarationProject[] = []
-  collectProjects(normalize(tsconfig), projects, new Set())
+  if (tsconfig) {
+    collectProjects(normalize(tsconfig), projects, new Set())
+  }
+  else {
+    const { vueOptions } = vueLanguageCore.createParsedCommandLineByJson(ts, ts.sys, rootDir, {})
+    projects.push({ options: DEFAULT_COMPILER_OPTIONS, fileNames: [], vueOptions })
+  }
+  if (paths) {
+    for (const project of projects) {
+      project.options = { ...project.options, paths: { ...project.options.paths, ...paths } }
+    }
+  }
   return projects
 }
 

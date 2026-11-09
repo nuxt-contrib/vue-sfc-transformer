@@ -12,12 +12,15 @@ import { getAutoCacheVersion } from './version'
 
 export type VueTscRunner = (
   files: Array<{ id: string, source: string }>,
-  options: { rootDir: string, tsconfig?: string },
+  options: { rootDir: string, tsconfig?: string, paths?: Record<string, string[]> },
 ) => Map<string, string> | Promise<Map<string, string>>
 
 export interface EmitVueDeclarationsOptions {
   rootDir: string
   tsconfig?: string
+  // Extra `compilerOptions.paths`, with absolute targets, taking precedence
+  // over the tsconfig's.
+  paths?: Record<string, string[]>
   // Content-hash cache. Defaults to a disk cache under
   // `<rootDir>/node_modules/.cache/vue-sfc-dts/`; pass a custom `DtsCache`
   // for in-memory / Redis / etc., or `false` to disable caching entirely.
@@ -52,7 +55,7 @@ const DECLARATION_EMIT_OPTIONS: ts.CompilerOptions = {
 }
 
 const runVueTsc: VueTscRunner = (files, options) => {
-  const projects = resolveDeclarationProjects(options.rootDir, options.tsconfig)
+  const projects = resolveDeclarationProjects(options.rootDir, options.tsconfig, options.paths)
   const projectFileNames = projects.map(project => new Set(project.fileNames))
   const groups = new Map<DeclarationProject, typeof files>()
   for (const file of files) {
@@ -171,7 +174,7 @@ export async function emitVueDeclarations(
   const cache = resolveCache(options)
   const version = cache
     ? [
-        getAutoCacheVersion({ rootDir: options.rootDir, tsconfig: options.tsconfig }),
+        getAutoCacheVersion({ rootDir: options.rootDir, tsconfig: options.tsconfig, paths: options.paths }),
         options.cacheVersion,
       ].filter(Boolean).join('|')
     : ''

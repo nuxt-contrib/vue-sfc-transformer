@@ -35,6 +35,11 @@ export interface VueSfcPluginOptions {
   // of its own. Only errors in the emitted SFCs fail the build. Throws if the
   // file is missing or unparseable.
   tsconfig?: string
+  // Extra `compilerOptions.paths` for declaration emit, with targets relative
+  // to `cwd`, taking precedence over the tsconfig's. Use it to resolve the
+  // package's own name to its sources, e.g.
+  // `{ 'my-module': ['./src/module.ts'], 'my-module/*': ['./src/*'] }`.
+  paths?: Record<string, string[]>
   // Imports matching any of these RegExps are kept as external relative .js
   // imports (with their `.ts` extension swapped for `.js`) rather than being
   // bundled. Useful for type-augmentation side-effect modules that look
@@ -140,6 +145,9 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
   const srcDir = resolve(cwd, pluginOptions.srcDir)
   const tsconfig = pluginOptions.tsconfig ? resolve(cwd, pluginOptions.tsconfig) : undefined
   const preserveSideEffectImports = pluginOptions.preserveSideEffectImports ?? []
+  const paths = pluginOptions.paths
+    ? Object.fromEntries(Object.entries(pluginOptions.paths).map(([key, targets]) => [key, targets.map(target => resolve(cwd, target))]))
+    : undefined
 
   return {
     name: 'vue-sfc-transformer:vue-sfc',
@@ -206,6 +214,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         {
           rootDir: cwd,
           tsconfig,
+          paths,
           cache: pluginOptions.cache,
           cacheVersion: pluginOptions.cacheVersion,
         },

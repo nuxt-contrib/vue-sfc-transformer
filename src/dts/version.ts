@@ -13,6 +13,7 @@ interface VersionInputs {
   // `vueCompilerOptions` (incl. any `extends` chain and references) should be
   // mixed into the hash. Omit to hash the defaults.
   tsconfig?: string
+  paths?: Record<string, string[]>
 }
 
 const cache = new Map<string, string>()
@@ -23,7 +24,7 @@ const cache = new Map<string, string>()
 // resolved compiler options and `vueCompilerOptions` (including any `extends`
 // chain from the consumer's tsconfig).
 export function getAutoCacheVersion(inputs: VersionInputs): string {
-  const memoKey = `${inputs.rootDir}\0${inputs.tsconfig ?? ''}`
+  const memoKey = `${inputs.rootDir}\0${inputs.tsconfig ?? ''}\0${JSON.stringify(inputs.paths ?? {})}`
   const cached = cache.get(memoKey)
   if (cached !== undefined) {
     return cached
@@ -72,7 +73,7 @@ function readSelfVersion(): string {
 
 function hashProjects(inputs: VersionInputs): string[] {
   try {
-    const projects = resolveDeclarationProjects(inputs.rootDir, inputs.tsconfig)
+    const projects = resolveDeclarationProjects(inputs.rootDir, inputs.tsconfig, inputs.paths)
     return [
       `vueCompilerOptions=${hash(projects.map(project => project.vueOptions))}`,
       `compilerOptions=${hash(projects.map(project => project.options))}`,
