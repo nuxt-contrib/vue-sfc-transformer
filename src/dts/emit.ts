@@ -55,6 +55,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
     declaration: true,
     emitDeclarationOnly: true,
     noEmit: false,
+    noUncheckedSideEffectImports: false,
     skipLibCheck: true,
     strictNullChecks: true,
     target: ts.ScriptTarget.ESNext,
