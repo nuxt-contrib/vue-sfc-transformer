@@ -29,10 +29,12 @@ describe('getAutoCacheVersion', () => {
   })
 
   it('changes with the compiler options of the tsconfig', async () => {
-    await writeFile(join(dir, 'strict.json'), JSON.stringify({ compilerOptions: { strict: true }, files: [] }))
-    await writeFile(join(dir, 'loose.json'), JSON.stringify({ compilerOptions: { strict: false }, files: [] }))
-    const strict = getAutoCacheVersion({ rootDir: dir, tsconfig: join(dir, 'strict.json') })
-    const loose = getAutoCacheVersion({ rootDir: dir, tsconfig: join(dir, 'loose.json') })
+    const tsconfig = join(dir, 'tsconfig.json')
+    await writeFile(tsconfig, JSON.stringify({ compilerOptions: { strict: true }, files: [] }))
+    const strict = getAutoCacheVersion({ rootDir: dir, tsconfig })
+    clearAutoCacheVersionMemo()
+    await writeFile(tsconfig, JSON.stringify({ compilerOptions: { strict: false }, files: [] }))
+    const loose = getAutoCacheVersion({ rootDir: dir, tsconfig })
     expect(strict).toMatch(/compilerOptions=[a-f0-9]+/)
     expect(strict).not.toBe(loose)
   })

@@ -375,4 +375,28 @@ describe('emitVueDeclarations (project tsconfig)', () => {
     })
     expect(dts).toContain('AmbientSize')
   })
+
+  it('emits SFCs from each referenced project with its own types', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'multiple-projects')
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, 'tsconfig.json'), JSON.stringify({
+      files: [],
+      references: [{ path: './app' }, { path: './server' }],
+    }))
+    const files = []
+    for (const name of ['app', 'server']) {
+      await mkdir(join(root, name), { recursive: true })
+      await writeFile(join(root, name, 'tsconfig.json'), JSON.stringify({ include: ['.'] }))
+      await writeFile(join(root, name, 'ambient.d.ts'), `type ProjectKind = '${name}'\n`)
+      const id = join(root, name, 'Component.vue')
+      const source = `<script setup lang="ts">const kind: ProjectKind = '${name}'\ndefineProps<{ kind: ProjectKind }>()</script><template><div>{{ kind }}</div></template>`
+      await writeFile(id, source)
+      files.push({ id, source })
+    }
+
+    const result = await emitVueDeclarations(files, { rootDir: root, tsconfig: join(root, 'tsconfig.json'), cache: false })
+    for (const { id } of files) {
+      expect(result.get(id)).toContain('ProjectKind')
+    }
+  })
 })
