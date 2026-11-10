@@ -39,6 +39,12 @@ describe('getAutoCacheVersion', () => {
     expect(strict).not.toBe(loose)
   })
 
+  it('changes with `paths`', () => {
+    const a = getAutoCacheVersion({ rootDir: dir, paths: { 'my-module': [join(dir, 'a.ts')] } })
+    const b = getAutoCacheVersion({ rootDir: dir, paths: { 'my-module': [join(dir, 'b.ts')] } })
+    expect(a).not.toBe(b)
+  })
+
   it('memoises across calls', () => {
     const a = getAutoCacheVersion({ rootDir: dir })
     const b = getAutoCacheVersion({ rootDir: dir })
