@@ -7,7 +7,7 @@ import process from 'node:process'
 
 import { glob } from 'tinyglobby'
 
-import { formatDeclarationDiagnostic } from '../dts/diagnostics'
+import { formatDeclarationDiagnostic, isDeclarationEmitDiagnostic } from '../dts/diagnostics'
 import { emitVueDeclarations } from '../dts/emit'
 import { transformVueSfc } from '../transform'
 import { isAbsolute, relative, resolve } from '../utils/path'
@@ -61,6 +61,11 @@ export interface VueSfcPluginOptions {
   // the build so that only one copy of rolldown is loaded. Defaults to the
   // `rolldown` peer dependency, imported on first use.
   transform?: Transform
+  // Which errors in the emitted SFCs fail the build: any (`'all'`, the
+  // default), or only those that make declarations missing or wrong, such as
+  // syntax errors, TS2742 and skipped emit (`'emit'`), with other errors
+  // reported as warnings.
+  declarationDiagnostics?: 'all' | 'emit'
 }
 
 const EMPTY_ENTRY_ID = '\0vue-sfc-transformer:empty-entry'
@@ -167,9 +172,13 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
       )
 
       const errors = diagnostics.filter(diagnostic => diagnostic.category === 'error')
-      if (errors.length) {
+      const fatal = pluginOptions.declarationDiagnostics === 'emit' ? errors.filter(isDeclarationEmitDiagnostic) : errors
+      if (fatal.length) {
         this.error(`[vue-sfc-transformer] failed to emit Vue declarations:\n${
-          errors.map(diagnostic => formatDeclarationDiagnostic(diagnostic, cwd)).join('\n')}`)
+          fatal.map(diagnostic => formatDeclarationDiagnostic(diagnostic, cwd)).join('\n')}`)
+      }
+      for (const diagnostic of errors) {
+        this.warn(`[vue-sfc-transformer] ${formatDeclarationDiagnostic(diagnostic, cwd)}`)
       }
 
       for (const file of files) {
