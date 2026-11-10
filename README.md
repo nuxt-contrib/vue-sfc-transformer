@@ -150,6 +150,28 @@ vueSfcPlugin({
 })
 ```
 
+## Transforming SFCs directly
+
+`vue-sfc-transformer/core` exports the pieces the rolldown plugin is built on, for tools that manage their own files and builds.
+
+`transformVueSfc` turns one SFC into its runtime form, and `emitVueDeclarations` emits declarations for a set of SFCs with the same options as the plugin (`cwd`, `tsconfig`, `paths`, `cache`, `cacheVersion`, `emitLegacyDeclarationAlias`). Diagnostics are returned rather than thrown, each with its `code`, `category`, `file`, `line` and `column`; `isDeclarationEmitDiagnostic` tells the ones that affect declarations from other type errors.
+
+```ts
+import { readFile } from 'node:fs/promises'
+import { transform } from 'rolldown/utils'
+import { emitVueDeclarations, isDeclarationEmitDiagnostic, transformVueSfc } from 'vue-sfc-transformer/core'
+
+const id = '/project/src/runtime/Button.vue'
+const source = await readFile(id, 'utf8')
+
+const { code } = await transformVueSfc(source, id, { transform })
+
+const { files, diagnostics } = await emitVueDeclarations([{ id, source }], { cwd: '/project', tsconfig: 'tsconfig.json' })
+files.get('/project/src/runtime/Button.d.vue.ts')
+
+const fatal = diagnostics.filter(d => d.category === 'error' && isDeclarationEmitDiagnostic(d))
+```
+
 ## 💻 Development
 
 - Clone this repository

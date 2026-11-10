@@ -20,6 +20,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.mjs",
+    "./core": "./dist/core.mjs",
     "./mkdist": "./dist/mkdist.mjs",
     "./rolldown": "./dist/rolldown.mjs",
     "./package.json": "./package.json"

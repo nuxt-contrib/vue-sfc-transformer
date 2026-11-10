@@ -1,18 +1,16 @@
 import type { Plugin } from 'rolldown'
-import type { transform as rolldownTransform } from 'rolldown/utils'
 import type { DtsCache } from '../dts/cache'
+import type { Transform } from '../transform'
 
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
 
 import { glob } from 'tinyglobby'
-import { preTranspileScriptSetup, transpileVueTemplate } from 'vue-sfc-transformer'
-import { parse } from 'vue/compiler-sfc'
 
+import { formatDeclarationDiagnostic } from '../dts/diagnostics'
 import { emitVueDeclarations } from '../dts/emit'
-import { escapeSfcAttrValue } from '../utils/attrs'
+import { transformVueSfc } from '../transform'
 import { isAbsolute, relative, resolve } from '../utils/path'
-import { getSfcScriptLang } from '../utils/script-lang'
 
 export interface VueSfcPluginOptions {
   // Source directory containing `.vue` files, relative to `cwd`. Also used
@@ -65,8 +63,6 @@ export interface VueSfcPluginOptions {
   transform?: Transform
 }
 
-type Transform = typeof rolldownTransform
-
 const EMPTY_ENTRY_ID = '\0vue-sfc-transformer:empty-entry'
 
 /**
@@ -77,49 +73,6 @@ const EMPTY_ENTRY_ID = '\0vue-sfc-transformer:empty-entry'
  */
 export const emptyEntry: Record<string, string> = {
   'vue-sfc-transformer-empty-entry': EMPTY_ENTRY_ID,
-}
-
-let defaultTransform: Promise<Transform> | undefined
-function loadDefaultTransform(): Promise<Transform> {
-  defaultTransform ??= import('rolldown/utils').then(r => r.transform)
-  return defaultTransform
-}
-
-async function transpileScript(transform: Transform, code: string, lang: 'ts' | 'tsx' = 'ts', filename = `__sfc.${lang}`): Promise<string> {
-  const result = await transform(filename, code, {
-    lang,
-    sourcemap: false,
-    // Only TypeScript is stripped; JSX stays in the output and is lowered by
-    // the consumer's toolchain.
-    ...(lang === 'tsx' ? { jsx: 'preserve' as const } : {}),
-    // Usage-based elision would drop imports referenced only in the template,
-    // which this transform never sees.
-    typescript: { onlyRemoveTypeImports: true },
-  })
-  if (result.errors.length) {
-    throw new AggregateError(result.errors, `[vue-sfc-transformer] failed to transpile script in ${filename}`)
-  }
-  // oxc appends `export {}` when every import is elided as type-only; it is
-  // invalid in `<script setup>`, and is emitted before any trailing trivia.
-  return (result.code ?? code).replace(/^export \{\};?[ \t]*\r?\n?/m, '')
-}
-
-// A `tsx` script still contains JSX after TypeScript is stripped, so its lang
-// attribute is rewritten to `jsx` rather than dropped, telling the consumer's
-// toolchain to lower the JSX. Scripts without TypeScript keep their lang.
-function scriptAttrs(
-  attrs: Record<string, string | true>,
-  lang: string | undefined,
-  transpiled: boolean,
-): Record<string, string | true> {
-  const stripped = stripAttrs(attrs, ['lang', 'generic'])
-  if (lang === 'tsx') {
-    return { ...stripped, lang: 'jsx' }
-  }
-  if (!transpiled && lang) {
-    return { ...stripped, lang }
-  }
-  return stripped
 }
 
 // Transform `.vue` files: strip TS from <script>/<script setup> (lowering
@@ -143,11 +96,7 @@ function scriptAttrs(
 export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
   const cwd = pluginOptions.cwd ?? process.cwd()
   const srcDir = resolve(cwd, pluginOptions.srcDir)
-  const tsconfig = pluginOptions.tsconfig ? resolve(cwd, pluginOptions.tsconfig) : undefined
   const preserveSideEffectImports = pluginOptions.preserveSideEffectImports ?? []
-  const paths = pluginOptions.paths
-    ? Object.fromEntries(Object.entries(pluginOptions.paths).map(([key, targets]) => [key, targets.map(target => resolve(cwd, target))]))
-    : undefined
 
   return {
     name: 'vue-sfc-transformer:vue-sfc',
@@ -194,43 +143,43 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
         return
       }
 
-      const transform = pluginOptions.transform ?? await loadDefaultTransform()
       const rawSources = new Map<string, string>()
       const runtimeByFile = new Map<string, string>()
 
       await Promise.all(files.map(async (file) => {
         const raw = await readFile(file, 'utf8')
         rawSources.set(file, raw)
-        const { runtime, errors } = await transformVueSfc(raw, file, transform)
-        for (const error of errors) {
-          this.error({ message: `[vue-sfc-transformer] ${file}: ${error.message}`, id: file })
-        }
-        runtimeByFile.set(file, runtime)
+        const { code } = await transformVueSfc(raw, file, { transform: pluginOptions.transform })
+        runtimeByFile.set(file, code)
         this.addWatchFile(file)
       }))
 
-      const declarations = await emitVueDeclarations(
+      const { files: declarations, diagnostics } = await emitVueDeclarations(
         files.map(id => ({ id, source: rawSources.get(id)! })),
         {
-          rootDir: cwd,
-          tsconfig,
-          paths,
+          cwd,
+          tsconfig: pluginOptions.tsconfig,
+          paths: pluginOptions.paths,
           cache: pluginOptions.cache,
           cacheVersion: pluginOptions.cacheVersion,
+          emitLegacyDeclarationAlias: pluginOptions.emitLegacyDeclarationAlias,
         },
       )
 
+      const errors = diagnostics.filter(diagnostic => diagnostic.category === 'error')
+      if (errors.length) {
+        this.error(`[vue-sfc-transformer] failed to emit Vue declarations:\n${
+          errors.map(diagnostic => formatDeclarationDiagnostic(diagnostic, cwd)).join('\n')}`)
+      }
+
       for (const file of files) {
-        const rel = relative(srcDir, file)
-        this.emitFile({ type: 'asset', fileName: rel, source: runtimeByFile.get(file)! })
-        const dts = declarations.get(file)
-        if (dts === undefined) {
+        if (!declarations.has(file.replace(/\.vue$/, '.d.vue.ts'))) {
           this.error({ message: `[vue-sfc-transformer] vue-tsc did not emit a declaration for ${file}`, id: file })
         }
-        this.emitFile({ type: 'asset', fileName: rel.replace(/\.vue$/, '.d.vue.ts'), source: dts })
-        if (pluginOptions.emitLegacyDeclarationAlias) {
-          this.emitFile({ type: 'asset', fileName: `${rel}.d.ts`, source: dts })
-        }
+        this.emitFile({ type: 'asset', fileName: relative(srcDir, file), source: runtimeByFile.get(file)! })
+      }
+      for (const [fileName, source] of declarations) {
+        this.emitFile({ type: 'asset', fileName: relative(srcDir, fileName), source })
       }
     },
     load: {
@@ -249,108 +198,4 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
       }
     },
   }
-}
-
-interface TransformResult {
-  runtime: string
-  errors: Error[]
-}
-
-async function transformVueSfc(input: string, filename: string, transform: Transform): Promise<TransformResult> {
-  const errors: Error[] = []
-  const sfc = parse(input, { filename, ignoreEmpty: true })
-  if (sfc.errors.length) {
-    for (const error of sfc.errors) {
-      errors.push(error instanceof Error ? error : new Error(String(error)))
-    }
-    return { runtime: input, errors }
-  }
-
-  const sfcScriptLang = getSfcScriptLang(input, sfc.descriptor.script, sfc.descriptor.scriptSetup)
-  const isTs = sfcScriptLang === 'ts' || sfcScriptLang === 'tsx'
-
-  const blocks: Array<{ type: string, attrs: Record<string, string | true>, content: string, offset: number }> = []
-
-  if (sfc.descriptor.scriptSetup) {
-    const setup = sfc.descriptor.scriptSetup
-    // `setup.lang` decides; `isTs` only applies when the setup block itself is
-    // untagged (a sibling `<script lang="ts">` implies TS for it too).
-    const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
-    const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, filename) : setup
-    const content = setupIsTs
-      ? await transpileScript(transform, block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
-      : block.content
-    blocks.push({
-      type: 'script',
-      attrs: scriptAttrs(setup.attrs, setup.lang, setupIsTs),
-      content,
-      offset: setup.loc.start.offset,
-    })
-  }
-  if (sfc.descriptor.script) {
-    const block = sfc.descriptor.script
-    const scriptLang = block.lang === 'ts' || block.lang === 'tsx' ? block.lang : undefined
-    const content = scriptLang
-      ? await transpileScript(transform, block.content, scriptLang)
-      : block.content
-    blocks.push({
-      type: 'script',
-      attrs: scriptAttrs(block.attrs, block.lang, scriptLang !== undefined),
-      content,
-      offset: block.loc.start.offset,
-    })
-  }
-  if (sfc.descriptor.template) {
-    const block = sfc.descriptor.template
-    const content = isTs && block.ast
-      ? await transpileVueTemplate(block.content, block.ast, block.loc.start.offset, async code => transpileScript(transform, code))
-      : block.content
-    blocks.push({
-      type: 'template',
-      attrs: block.attrs,
-      content,
-      offset: block.loc.start.offset,
-    })
-  }
-  for (const style of sfc.descriptor.styles) {
-    blocks.push({
-      type: 'style',
-      attrs: style.attrs,
-      content: style.content,
-      offset: style.loc.start.offset,
-    })
-  }
-  for (const custom of sfc.descriptor.customBlocks) {
-    blocks.push({
-      type: custom.type,
-      attrs: custom.attrs,
-      content: custom.content,
-      offset: custom.loc.start.offset,
-    })
-  }
-
-  blocks.sort((a, b) => a.offset - b.offset)
-
-  const runtime = blocks.map((block) => {
-    const attrs = Object.entries(block.attrs)
-      .map(([key, value]) => value === true ? key : value ? `${key}="${escapeSfcAttrValue(value)}"` : undefined)
-      .filter(Boolean)
-      .join(' ')
-    const header = `<${`${block.type} ${attrs}`.trim()}>`
-    const footer = `</${block.type}>`
-    const body = block.content.replace(/(\n\n)\n+/g, '\n\n').replace(/^\s*\n|\n\s*$/g, '')
-    return `${header}\n${body}\n${footer}\n`
-  }).join('\n')
-
-  return { runtime, errors }
-}
-
-function stripAttrs(attrs: Record<string, string | true>, remove: string[]): Record<string, string | true> {
-  const out: Record<string, string | true> = {}
-  for (const [key, value] of Object.entries(attrs)) {
-    if (!remove.includes(key)) {
-      out[key] = value
-    }
-  }
-  return out
 }

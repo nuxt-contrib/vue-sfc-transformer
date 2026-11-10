@@ -1,13 +1,18 @@
 import type { DtsCache } from '../src/dts/cache'
-import type { EmitVueDeclarationsOptions, VueTscRunner } from '../src/dts/emit'
+import type { DeclarationDiagnostic } from '../src/dts/diagnostics'
+import type { EmitVueDeclarationsOptions, EmitVueDeclarationsResult, VueDeclarationSource, VueTscRunner } from '../src/dts/emit'
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { createFileSystemDtsCache } from '../src/dts/cache'
-import { emitVueDeclarations } from '../src/dts/emit'
+import { createFileSystemDtsCache, emitVueDeclarations, isDeclarationEmitDiagnostic } from '../src/core'
+import { emitDeclarations } from '../src/dts/emit'
+
+function dtsOf(result: EmitVueDeclarationsResult, id: string): string | undefined {
+  return result.files.get(id.replace(/\.vue$/, '.d.vue.ts'))
+}
 
 describe('emitVueDeclarations (caching)', () => {
   const dir = fileURLToPath(new URL('../node_modules/.tmp/dts-emit', import.meta.url))
@@ -20,20 +25,24 @@ describe('emitVueDeclarations (caching)', () => {
     await rm(dir, { force: true, recursive: true })
   })
 
-  function fakeRunner(map: Record<string, string> = {}): VueTscRunner {
+  function fakeRunner(map: Record<string, string> = {}, diagnostics: DeclarationDiagnostic[] = []): VueTscRunner {
     return (files) => {
-      const out = new Map<string, string>()
+      const declarations = new Map<string, string>()
       for (const f of files) {
-        out.set(f.id, map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`)
+        declarations.set(f.id, map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`)
       }
-      return out
+      return { declarations, diagnostics }
     }
   }
 
+  function emitWith(files: VueDeclarationSource[], { runner, ...options }: EmitVueDeclarationsOptions & { runner: VueTscRunner }): Promise<EmitVueDeclarationsResult> {
+    return emitDeclarations(files, options, runner)
+  }
+
   it('returns empty for empty input', async () => {
-    const opts: EmitVueDeclarationsOptions = { rootDir: dir }
-    const result = await emitVueDeclarations([], opts)
-    expect(result.size).toBe(0)
+    const result = await emitVueDeclarations([], { cwd: dir })
+    expect(result.files.size).toBe(0)
+    expect(result.diagnostics).toEqual([])
   })
 
   it('caches without a user-supplied `cacheVersion` (auto-derived) when a `cache` is explicitly provided', async () => {
@@ -42,45 +51,45 @@ describe('emitVueDeclarations (caching)', () => {
     const runner = vi.fn(fakeRunner({ '/auto.vue': 'declare const A: 1\n' }))
     const files = [{ id: '/auto.vue', source: 'auto' }]
 
-    const first = await emitVueDeclarations(files, { rootDir: dir, cache, runner })
+    const first = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(first.get('/auto.vue')).toBe('declare const A: 1\n')
+    expect(dtsOf(first, '/auto.vue')).toBe('declare const A: 1\n')
 
-    const second = await emitVueDeclarations(files, { rootDir: dir, cache, runner })
+    const second = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(second.get('/auto.vue')).toBe('declare const A: 1\n')
+    expect(dtsOf(second, '/auto.vue')).toBe('declare const A: 1\n')
   })
 
   it('skips caching entirely when `cache: false`', async () => {
     const runner = vi.fn(fakeRunner({ '/a.vue': 'declare const A: 1\n' }))
-    const result = await emitVueDeclarations(
+    const result = await emitWith(
       [{ id: '/a.vue', source: '<template/>' }],
-      { rootDir: dir, cache: false, runner },
+      { cwd: dir, cache: false, runner },
     )
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(result.get('/a.vue')).toBe('declare const A: 1\n')
+    expect(dtsOf(result, '/a.vue')).toBe('declare const A: 1\n')
 
-    const second = await emitVueDeclarations(
+    const second = await emitWith(
       [{ id: '/a.vue', source: '<template/>' }],
-      { rootDir: dir, cache: false, runner },
+      { cwd: dir, cache: false, runner },
     )
     expect(runner).toHaveBeenCalledTimes(2)
-    expect(second.get('/a.vue')).toBe('declare const A: 1\n')
+    expect(dtsOf(second, '/a.vue')).toBe('declare const A: 1\n')
   })
 
-  it('uses a default fs cache under `<rootDir>/node_modules/.cache/vue-sfc-dts` when none is supplied', async () => {
-    const rootDir = join(dir, 'default-cache-root')
-    await mkdir(rootDir, { recursive: true })
+  it('uses a default fs cache under `<cwd>/node_modules/.cache/vue-sfc-dts` when none is supplied', async () => {
+    const cwd = join(dir, 'default-cache-root')
+    await mkdir(cwd, { recursive: true })
     const runner = vi.fn(fakeRunner({ '/d.vue': 'declare const D: 1\n' }))
     const files = [{ id: '/d.vue', source: 'default-cache' }]
 
-    const first = await emitVueDeclarations(files, { rootDir, runner })
+    const first = await emitWith(files, { cwd, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(first.get('/d.vue')).toBe('declare const D: 1\n')
+    expect(dtsOf(first, '/d.vue')).toBe('declare const D: 1\n')
 
-    const second = await emitVueDeclarations(files, { rootDir, runner })
+    const second = await emitWith(files, { cwd, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(second.get('/d.vue')).toBe('declare const D: 1\n')
+    expect(dtsOf(second, '/d.vue')).toBe('declare const D: 1\n')
   })
 
   it('writes to the cache on a miss and reads on a subsequent hit', async () => {
@@ -88,15 +97,15 @@ describe('emitVueDeclarations (caching)', () => {
     const cache: DtsCache = createFileSystemDtsCache({ dir: cacheDir })
     const runner = vi.fn(fakeRunner({ '/m.vue': 'declare const M: 1\n' }))
     const files = [{ id: '/m.vue', source: '<template>m</template>' }]
-    const opts = { rootDir: dir, cache, cacheVersion: 'v1', runner }
+    const opts = { cwd: dir, cache, cacheVersion: 'v1', runner }
 
-    const first = await emitVueDeclarations(files, opts)
+    const first = await emitWith(files, opts)
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(first.get('/m.vue')).toBe('declare const M: 1\n')
+    expect(dtsOf(first, '/m.vue')).toBe('declare const M: 1\n')
 
-    const second = await emitVueDeclarations(files, opts)
+    const second = await emitWith(files, opts)
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(second.get('/m.vue')).toBe('declare const M: 1\n')
+    expect(dtsOf(second, '/m.vue')).toBe('declare const M: 1\n')
   })
 
   it('bypasses the cache when cacheVersion changes', async () => {
@@ -105,10 +114,10 @@ describe('emitVueDeclarations (caching)', () => {
     const runner = vi.fn(fakeRunner({ '/v.vue': 'declare const V: 1\n' }))
     const files = [{ id: '/v.vue', source: '<template>v</template>' }]
 
-    await emitVueDeclarations(files, { rootDir: dir, cache, cacheVersion: 'v1', runner })
+    await emitWith(files, { cwd: dir, cache, cacheVersion: 'v1', runner })
     expect(runner).toHaveBeenCalledTimes(1)
 
-    await emitVueDeclarations(files, { rootDir: dir, cache, cacheVersion: 'v2', runner })
+    await emitWith(files, { cwd: dir, cache, cacheVersion: 'v2', runner })
     expect(runner).toHaveBeenCalledTimes(2)
   })
 
@@ -119,15 +128,42 @@ describe('emitVueDeclarations (caching)', () => {
     const a = { id: '/a.vue', source: 'A' }
     const b = { id: '/b.vue', source: 'B' }
 
-    await emitVueDeclarations([a], { rootDir: dir, cache, cacheVersion: 'v1', runner })
+    await emitWith([a], { cwd: dir, cache, cacheVersion: 'v1', runner })
     expect(runner).toHaveBeenCalledTimes(1)
     expect(runner.mock.calls[0]?.[0]).toEqual([a])
 
     runner.mockClear()
-    const both = await emitVueDeclarations([a, b], { rootDir: dir, cache, cacheVersion: 'v1', runner })
+    const both = await emitWith([a, b], { cwd: dir, cache, cacheVersion: 'v1', runner })
     expect(runner).toHaveBeenCalledTimes(1)
     expect(runner.mock.calls[0]?.[0]).toEqual([b])
-    expect(both.size).toBe(2)
+    expect(both.files.size).toBe(2)
+  })
+
+  it('does not cache declarations from a run with errors', async () => {
+    const cache = createFileSystemDtsCache({ dir: join(dir, 'errors') })
+    const diagnostic: DeclarationDiagnostic = { code: 2322, category: 'error', kind: 'semantic', file: '/broken.vue', line: 1, column: 1, message: 'broken' }
+    const runner = vi.fn(fakeRunner({}, [diagnostic]))
+    const files = [{ id: '/broken.vue', source: 'broken' }, { id: '/clean.vue', source: 'clean' }]
+
+    const first = await emitWith(files, { cwd: dir, cache, runner })
+    expect(first.diagnostics).toEqual([diagnostic])
+    expect(first.files.size).toBe(2)
+
+    runner.mockClear()
+    const second = await emitWith(files, { cwd: dir, cache, runner })
+    expect(runner.mock.calls[0]?.[0]).toEqual(files)
+    expect(second.diagnostics).toEqual([diagnostic])
+  })
+
+  it('also returns `.vue.d.ts` declarations with `emitLegacyDeclarationAlias`', async () => {
+    const runner = fakeRunner({ '/src/Foo.vue': 'declare const F: 1\n' })
+    const files = [{ id: '/src/Foo.vue', source: 'foo' }]
+
+    const result = await emitWith(files, { cwd: dir, cache: false, runner, emitLegacyDeclarationAlias: true })
+    expect([...result.files]).toEqual([
+      ['/src/Foo.d.vue.ts', 'declare const F: 1\n'],
+      ['/src/Foo.vue.d.ts', 'declare const F: 1\n'],
+    ])
   })
 
   // Models the shape returned by unstorage's `createStorage()`: async
@@ -145,14 +181,14 @@ describe('emitVueDeclarations (caching)', () => {
     const runner = vi.fn(fakeRunner({ '/u.vue': 'declare const U: 1\n' }))
     const files = [{ id: '/u.vue', source: 'u' }]
 
-    const first = await emitVueDeclarations(files, { rootDir: dir, cache, runner })
+    const first = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(first.get('/u.vue')).toBe('declare const U: 1\n')
+    expect(dtsOf(first, '/u.vue')).toBe('declare const U: 1\n')
     expect(store.size).toBe(1)
 
-    const second = await emitVueDeclarations(files, { rootDir: dir, cache, runner })
+    const second = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(second.get('/u.vue')).toBe('declare const U: 1\n')
+    expect(dtsOf(second, '/u.vue')).toBe('declare const U: 1\n')
   })
 })
 
@@ -171,9 +207,10 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     const id = join(dir, 'Hello.vue')
     const source = `<script setup lang="ts">defineProps<{ msg: string }>()\n</script><template><div>{{ msg }}</div></template>`
     await writeFile(id, source)
-    const result = await emitVueDeclarations([{ id, source }], { rootDir: dir, cache: false })
-    const dts = result.get(id)
-    expect(dts).toBeDefined()
+    const result = await emitVueDeclarations([{ id, source }], { cwd: dir, cache: false })
+    expect(result.diagnostics).toEqual([])
+    expect([...result.files.keys()]).toEqual([join(dir, 'Hello.d.vue.ts')])
+    const dts = dtsOf(result, id)
     expect(dts).toContain('msg')
     expect(dts).toContain('DefineComponent')
   })
@@ -182,8 +219,8 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     const id = join(dir, 'Styled.vue')
     const source = `<script setup lang="ts">import './styled.css'\ndefineProps<{ msg: string }>()\n</script><template><div>{{ msg }}</div></template>`
     await writeFile(id, source)
-    const result = await emitVueDeclarations([{ id, source }], { rootDir: dir, cache: false })
-    expect(result.get(id)).toContain('msg')
+    const result = await emitVueDeclarations([{ id, source }], { cwd: dir, cache: false })
+    expect(dtsOf(result, id)).toContain('msg')
   })
 
   it('resolves path aliases from tsconfig.compilerOptions.paths in emitted declarations', { timeout: 50_000 }, async () => {
@@ -192,8 +229,7 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
 
     await writeFile(join(root, 'button-types.ts'), `export interface ButtonProps { label: string }\n`)
 
-    const tsconfigPath = join(root, 'tsconfig.json')
-    await writeFile(tsconfigPath, JSON.stringify({
+    await writeFile(join(root, 'tsconfig.json'), JSON.stringify({
       compilerOptions: {
         paths: { '#button': ['./button-types.ts'] },
       },
@@ -210,14 +246,34 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     await writeFile(id, source)
 
     const result = await emitVueDeclarations([{ id, source }], {
-      rootDir: root,
-      tsconfig: tsconfigPath,
+      cwd: root,
+      tsconfig: 'tsconfig.json',
       cache: false,
     })
 
-    const dts = result.get(id)
-    expect(dts).toBeDefined()
-    expect(dts).toContain('ButtonProps')
+    expect(result.diagnostics).toEqual([])
+    expect(dtsOf(result, id)).toContain('ButtonProps')
+  })
+
+  it('resolves imports of cached SFCs from their supplied source', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'cached-import')
+    await mkdir(root, { recursive: true })
+    const store = new Map<string, string>()
+    const cache: DtsCache = {
+      getItem: async key => store.get(key),
+      setItem: async (key, value) => void store.set(key, value),
+    }
+    const child = { id: join(root, 'Child.vue'), source: `<script lang="ts">\nexport interface ChildProps { label: string }\n</script>\n<template><div /></template>\n` }
+    const parent = (prop: string) => ({
+      id: join(root, 'Parent.vue'),
+      source: `<script setup lang="ts">\nimport type { ChildProps } from './Child.vue'\ndefineProps<{ ${prop}: ChildProps }>()\n</script>\n<template><div /></template>\n`,
+    })
+
+    const first = await emitVueDeclarations([child, parent('first')], { cwd: root, cache })
+    expect(first.diagnostics).toEqual([])
+    const second = await emitVueDeclarations([child, parent('second')], { cwd: root, cache })
+    expect(second.diagnostics).toEqual([])
+    expect(dtsOf(second, parent('second').id)).toContain('second: ChildProps')
   })
 
   it('ignores errors in files other than the emitted SFCs', { timeout: 50_000 }, async () => {
@@ -232,11 +288,12 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     const source = `<script setup lang="ts">import type { Props } from './types'\ndefineProps<Props>()\n</script><template><div>{{ msg }}</div></template>`
     await writeFile(id, source)
 
-    const result = await emitVueDeclarations([{ id, source }], { rootDir: root, cache: false })
-    expect(result.get(id)).toContain('Props')
+    const result = await emitVueDeclarations([{ id, source }], { cwd: root, cache: false })
+    expect(result.diagnostics).toEqual([])
+    expect(dtsOf(result, id)).toContain('Props')
   })
 
-  it('fails when TypeScript reports declaration emit diagnostics', { timeout: 50_000 }, async () => {
+  it('returns semantic errors with their location in the SFC', { timeout: 50_000 }, async () => {
     const root = join(dir, 'diagnostics-test')
     await mkdir(root, { recursive: true })
 
@@ -250,10 +307,54 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     ].join('\n')
     await writeFile(id, source)
 
-    await expect(emitVueDeclarations([{ id, source }], {
-      rootDir: root,
-      cache: false,
-    })).rejects.toThrow(/Cannot find module|#missing|diagnostic/i)
+    const result = await emitVueDeclarations([{ id, source }], { cwd: root, cache: false })
+    expect(result.diagnostics).toEqual([{
+      code: 2307,
+      category: 'error',
+      kind: 'semantic',
+      file: id,
+      line: 2,
+      column: 35,
+      message: `Cannot find module '#missing' or its corresponding type declarations.`,
+    }])
+    expect(isDeclarationEmitDiagnostic(result.diagnostics[0]!)).toBe(false)
+    expect(dtsOf(result, id)).toContain('DefineComponent')
+  })
+
+  it('returns syntax errors as emit-affecting', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'syntax-error')
+    await mkdir(root, { recursive: true })
+
+    const id = join(root, 'Syntax.vue')
+    const source = `<script setup lang="ts">\nconst n = (1\n</script>\n<template><div /></template>\n`
+    await writeFile(id, source)
+
+    const result = await emitVueDeclarations([{ id, source }], { cwd: root, cache: false })
+    const [diagnostic] = result.diagnostics
+    expect(diagnostic).toMatchObject({ code: 1005, kind: 'syntactic', file: id })
+    expect(isDeclarationEmitDiagnostic(diagnostic!)).toBe(true)
+  })
+
+  it('returns non-portable inferred types as emit-affecting and skips their emit', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'portability')
+    const fixture: Record<string, string> = {
+      'node_modules/dep/package.json': JSON.stringify({ name: 'dep', types: 'index.d.ts' }),
+      'node_modules/dep/index.d.ts': `import type { Inner } from 'inner'\nexport declare function make(): Inner\n`,
+      'node_modules/dep/node_modules/inner/package.json': JSON.stringify({ name: 'inner', types: 'index.d.ts' }),
+      'node_modules/dep/node_modules/inner/index.d.ts': 'export interface Inner { value: string }\n',
+    }
+    for (const [path, contents] of Object.entries(fixture)) {
+      await mkdir(dirname(join(root, path)), { recursive: true })
+      await writeFile(join(root, path), contents)
+    }
+    const id = join(root, 'Exposed.vue')
+    const source = `<script setup lang="ts">\nimport { make } from 'dep'\ndefineExpose({ inner: make() })\n</script>\n<template><div /></template>\n`
+    await writeFile(id, source)
+
+    const result = await emitVueDeclarations([{ id, source }], { cwd: root, cache: false })
+    expect(result.diagnostics).toEqual([expect.objectContaining({ code: 2883, category: 'error', kind: 'declaration', file: id })])
+    expect(isDeclarationEmitDiagnostic(result.diagnostics[0]!)).toBe(true)
+    expect(result.files.size).toBe(0)
   })
 })
 
@@ -267,7 +368,7 @@ describe('emitVueDeclarations (project tsconfig)', () => {
     await rm(dir, { force: true, recursive: true })
   })
 
-  async function emitFixture(name: string, files: Record<string, string>, paths?: (root: string) => Record<string, string[]>): Promise<string | undefined> {
+  async function emitFixture(name: string, files: Record<string, string>, paths?: Record<string, string[]>): Promise<EmitVueDeclarationsResult & { dts?: string }> {
     const root = join(dir, name)
     for (const [path, contents] of Object.entries(files)) {
       await mkdir(dirname(join(root, path)), { recursive: true })
@@ -275,12 +376,12 @@ describe('emitVueDeclarations (project tsconfig)', () => {
     }
     const id = join(root, 'src/Component.vue')
     const result = await emitVueDeclarations([{ id, source: files['src/Component.vue']! }], {
-      rootDir: root,
-      tsconfig: join(root, 'tsconfig.json'),
-      paths: paths?.(root),
+      cwd: root,
+      tsconfig: 'tsconfig.json',
+      paths,
       cache: false,
     })
-    return result.get(id)
+    return { ...result, dts: dtsOf(result, id) }
   }
 
   const usesAmbientType = [
@@ -291,11 +392,12 @@ describe('emitVueDeclarations (project tsconfig)', () => {
   ].join('\n')
 
   it('includes ambient declarations from the tsconfig `include`', { timeout: 50_000 }, async () => {
-    const dts = await emitFixture('ambient', {
+    const { dts, diagnostics } = await emitFixture('ambient', {
       'tsconfig.json': JSON.stringify({ include: ['src', 'types'] }),
       'types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
       'src/Component.vue': usesAmbientType,
     })
+    expect(diagnostics).toEqual([])
     expect(dts).toContain('AmbientSize')
   })
 
@@ -304,12 +406,15 @@ describe('emitVueDeclarations (project tsconfig)', () => {
       'tsconfig.json': JSON.stringify({ compilerOptions: { noUncheckedSideEffectImports }, include: ['src'] }),
       'src/Component.vue': `<script setup lang="ts">import './styles.css'\ndefineProps<{ msg: string }>()\n</script><template><div /></template>`,
     })
-    expect(await emitFixture('side-effect-imports-unchecked', files(false))).toContain('msg: string')
-    await expect(emitFixture('side-effect-imports-checked', files(true))).rejects.toThrow('TS2882')
+    const unchecked = await emitFixture('side-effect-imports-unchecked', files(false))
+    expect(unchecked.diagnostics).toEqual([])
+    expect(unchecked.dts).toContain('msg: string')
+    const checked = await emitFixture('side-effect-imports-checked', files(true))
+    expect(checked.diagnostics.map(diagnostic => diagnostic.code)).toEqual([2882])
   })
 
   it('uses the strictness of the project', { timeout: 50_000 }, async () => {
-    const dts = await emitFixture('not-strict', {
+    const { dts, diagnostics } = await emitFixture('not-strict', {
       'tsconfig.json': JSON.stringify({ compilerOptions: { strict: false }, include: ['src'] }),
       'src/Component.vue': [
         '<script setup lang="ts">',
@@ -319,21 +424,23 @@ describe('emitVueDeclarations (project tsconfig)', () => {
         '<template><div>{{ fixed }}</div></template>',
       ].join('\n'),
     })
+    expect(diagnostics).toEqual([])
     expect(dts).toContain('DefineComponent')
   })
 
   it('ignores errors in other files of the project', { timeout: 50_000 }, async () => {
-    const dts = await emitFixture('unrelated-errors', {
+    const { dts, diagnostics } = await emitFixture('unrelated-errors', {
       'tsconfig.json': JSON.stringify({ include: ['src', 'types'] }),
       'types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
       'src/server.ts': `export const port: number = 'invalid'\n`,
       'src/Component.vue': usesAmbientType,
     })
+    expect(diagnostics).toEqual([])
     expect(dts).toContain('AmbientSize')
   })
 
   it('emits declarations whatever the project emit settings', { timeout: 50_000 }, async () => {
-    const dts = await emitFixture('emit-settings', {
+    const { dts, diagnostics } = await emitFixture('emit-settings', {
       'tsconfig.json': JSON.stringify({
         compilerOptions: {
           noEmit: true,
@@ -351,19 +458,29 @@ describe('emitVueDeclarations (project tsconfig)', () => {
       'src/server.ts': `export const port: number = 'invalid'\n`,
       'src/Component.vue': usesAmbientType,
     })
+    expect(diagnostics).toEqual([])
     expect(dts).toContain('AmbientSize')
     expect(dts).not.toContain('sourceMappingURL')
   })
 
-  it('still fails on errors in the emitted SFCs', { timeout: 50_000 }, async () => {
-    await expect(emitFixture('sfc-errors', {
+  it('returns errors in the emitted SFCs', { timeout: 50_000 }, async () => {
+    const { dts, diagnostics } = await emitFixture('sfc-errors', {
       'tsconfig.json': JSON.stringify({ include: ['src'] }),
       'src/Component.vue': '<script setup lang="ts">const n: number = \'one\'</script><template><div>{{ n }}</div></template>',
-    })).rejects.toThrow(/Component\.vue.*TS2322/)
+    })
+    expect(diagnostics).toEqual([expect.objectContaining({
+      code: 2322,
+      category: 'error',
+      kind: 'semantic',
+      file: join(dir, 'sfc-errors/src/Component.vue'),
+      line: 1,
+      column: 31,
+    })])
+    expect(dts).toContain('DefineComponent')
   })
 
   it('merges `paths` over the tsconfig paths', { timeout: 50_000 }, async () => {
-    const dts = await emitFixture('merged-paths', {
+    const { dts, diagnostics } = await emitFixture('merged-paths', {
       'tsconfig.json': JSON.stringify({
         compilerOptions: { paths: { '#kept': ['./src/kept.ts'], '#replaced': ['./src/wrong.ts'] } },
         include: ['src'],
@@ -380,12 +497,13 @@ describe('emitVueDeclarations (project tsconfig)', () => {
         '</script>',
         '<template><div>{{ size }}</div></template>',
       ].join('\n'),
-    }, root => ({ '#replaced': [join(root, 'src/right.ts')] }))
+    }, { '#replaced': ['./src/right.ts'] })
+    expect(diagnostics).toEqual([])
     expect(dts).toContain('Kept')
   })
 
   it('resolves the projects referenced by a solution-style tsconfig', { timeout: 50_000 }, async () => {
-    const dts = await emitFixture('solution', {
+    const { dts, diagnostics } = await emitFixture('solution', {
       'tsconfig.json': JSON.stringify({
         files: [],
         references: [{ path: './.nuxt/tsconfig.server.json' }, { path: './.nuxt/tsconfig.app.json' }],
@@ -396,6 +514,7 @@ describe('emitVueDeclarations (project tsconfig)', () => {
       'server/index.ts': 'export {}\n',
       'src/Component.vue': usesAmbientType,
     })
+    expect(diagnostics).toEqual([])
     expect(dts).toContain('AmbientSize')
   })
 
@@ -417,9 +536,10 @@ describe('emitVueDeclarations (project tsconfig)', () => {
       files.push({ id, source })
     }
 
-    const result = await emitVueDeclarations(files, { rootDir: root, tsconfig: join(root, 'tsconfig.json'), cache: false })
+    const result = await emitVueDeclarations(files, { cwd: root, tsconfig: join(root, 'tsconfig.json'), cache: false })
+    expect(result.diagnostics).toEqual([])
     for (const { id } of files) {
-      expect(result.get(id)).toContain('ProjectKind')
+      expect(dtsOf(result, id)).toContain('ProjectKind')
     }
   })
 })
