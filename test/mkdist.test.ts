@@ -20,10 +20,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineProps({ msg: {
-      	type: String,
-      	required: true
-      } });
+      defineProps({
+          msg: { type: String, required: true }
+        })
       </script>
       "
     `)
@@ -33,10 +32,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const props = defineProps({ msg: {
-      	type: String,
-      	required: true
-      } });
+      const props = defineProps({
+          msg: { type: String, required: true }
+        })
       </script>
       "
     `)
@@ -46,10 +44,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const { msg } = defineProps({ msg: {
-      	type: String,
-      	required: true
-      } });
+      const { msg } = defineProps({
+          msg: { type: String, required: true }
+        })
       </script>
       "
     `)
@@ -59,10 +56,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const { msg = "hello" } = defineProps({ msg: {
-      	type: String,
-      	required: false
-      } });
+      const { msg = 'hello' } = defineProps({
+          msg: { type: String, required: false }
+        })
       </script>
       "
     `)
@@ -75,11 +71,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const props = defineProps({ msg: {
-      	type: String,
-      	required: false,
-      	default: "hi"
-      } });
+      const props = defineProps({
+          msg: { type: String, required: false, default: 'hi' }
+        })
       </script>
       "
     `)
@@ -89,11 +83,9 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineProps({ msg: {
-      	type: String,
-      	required: false,
-      	default: "hi"
-      } });
+      defineProps({
+          msg: { type: String, required: false, default: 'hi' }
+        })
       </script>
       "
     `)
@@ -106,7 +98,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const emit = defineEmits(["click"]);
+      const emit = defineEmits(["click"])
       </script>
       "
     `)
@@ -116,7 +108,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -126,7 +118,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -136,7 +128,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -146,7 +138,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineEmits(["click"]);
+      defineEmits(["click"])
       </script>
       "
     `)
@@ -159,7 +151,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      const model = defineModel({ type: String });
+      const model = defineModel({ type: String })
       </script>
       "
     `)
@@ -167,7 +159,7 @@ describe('transform typescript script setup', () => {
       await fixture(`<script setup lang="ts">defineModel<string>()</script>`),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel({ type: String });
+      defineModel({ type: String })
       </script>
       "
     `)
@@ -177,7 +169,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", { type: String });
+      defineModel("msg", { type: String })
       </script>
       "
     `)
@@ -187,10 +179,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel({
-      	type: String,
-      	...{ required: true }
-      });
+      defineModel({ type: String, ...{ required: true } })
       </script>
       "
     `)
@@ -200,10 +189,7 @@ describe('transform typescript script setup', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<script setup>
-      defineModel("msg", {
-      	type: String,
-      	...{ required: true }
-      });
+      defineModel("msg", { type: String, ...{ required: true } })
       </script>
       "
     `)
@@ -226,8 +212,8 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script setup>
-      import { toValue } from "vue";
-      const msg = 1;
+                import { toValue,          } from 'vue'
+                const msg = 1
       </script>
       "
     `)
@@ -244,7 +230,7 @@ describe('transform typescript script setup', () => {
     expect(output).not.toContain('as string')
     expect(output).toMatchInlineSnapshot(`
       "<template>
-        <div>{{ msg }}</div>
+        <div>{{ (msg          ) }}</div>
       </template>
       "
     `)
@@ -321,7 +307,7 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
 
       <style scoped>
@@ -365,7 +351,7 @@ describe('transform typescript script setup', () => {
       </style>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
 
       <template>
@@ -391,7 +377,7 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
       "
     `)
@@ -438,7 +424,7 @@ describe('transform typescript script setup', () => {
       </template>
 
       <script>
-      export default { name: "App" };
+              export default { name: 'App' }
       </script>
       "
     `)
@@ -496,7 +482,8 @@ const vnode = <div>{props.msg as string}</div>
 
     expect(scriptSetup?.content).toContain('type: String')
     expect(scriptSetup?.content).toContain('defineEmits(["change"])')
-    expect(scriptSetup?.content).toContain('<div>{props.msg}</div>')
+    // petrea blanks `as string` in place, so only match the JSX shape.
+    expect(scriptSetup?.content).toMatch(/<div>\{props\.msg\s*\}<\/div>/)
     expect(scriptSetup?.content).not.toMatch(/define(?:Props|Emits)</)
     expect(scriptSetup?.content).not.toContain('as string')
     expect(scriptSetup?.lang).toBe('jsx')
@@ -540,6 +527,48 @@ const vNode = <div>hello</div>
     await expect(
       fixture(`<template><div>{{ <span>hi</span> }}</div></template>`),
     ).rejects.toThrow('[vue-sfc-transformer]')
+  })
+
+  it('errors on TypeScript with runtime semantics instead of emitting invalid JS', async () => {
+    const parameterProperty = await fixture(
+      `<script setup lang="ts">
+class Button { constructor(private label: string) {} }
+</script>`,
+    ).then(() => undefined, (error: Error & { cause?: Error }) => error)
+
+    expect(parameterProperty?.message).toContain('Failed to load the script block')
+    expect(parameterProperty?.cause?.message).toContain('TSParameterProperty')
+    expect(parameterProperty?.cause?.message).toContain('private label')
+
+    const typeAssertion = await fixture(
+      `<script setup lang="ts">const msg = <string>msg</script>`,
+    ).then(() => undefined, (error: Error & { cause?: Error }) => error)
+
+    expect(typeAssertion?.cause?.message).toContain('TSTypeAssertion')
+  })
+
+  it('warns once when mkdist esbuild options are set', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const input = {
+      path: 'index.vue',
+      srcPath: join(tmpDir, 'src/index.vue'),
+      extension: '.vue',
+      getContents: () => '<template><div /></template>',
+    }
+    const context = {
+      loadFile: async () => undefined,
+      options: { esbuild: { define: { __FEATURE__: 'false' } } },
+    }
+
+    try {
+      await vueLoader(input, context)
+      await vueLoader(input, context)
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('no longer applied to `.vue` script blocks'))
+    }
+    finally {
+      warn.mockRestore()
+    }
   })
 
   async function fixture(src: string): Promise<string> {
