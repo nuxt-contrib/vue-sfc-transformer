@@ -1,18 +1,17 @@
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 
-import * as vueLanguageCore from '@vue/language-core'
 import ts from 'typescript'
 
-import { readTsconfigJson } from './tsconfig'
+import { resolveDeclarationProjects } from './project'
 
 const require = createRequire(import.meta.url)
 
 interface VersionInputs {
   rootDir: string
-  // Absolute path to a tsconfig.json whose `vueCompilerOptions` (incl. any
-  // `extends` chain) should be mixed into the hash. Omit to hash the default
-  // vue options.
+  // Absolute path to a tsconfig.json whose compiler options and
+  // `vueCompilerOptions` (incl. any `extends` chain and references) should be
+  // mixed into the hash. Omit to hash the defaults.
   tsconfig?: string
 }
 
@@ -21,8 +20,8 @@ const cache = new Map<string, string>()
 // Compute a cache-key prefix that captures every input to the emitted .d.ts
 // output that lives *outside* the SFC source itself: this package, the Vue
 // language plugin, the Volar program proxy, the TypeScript compiler, and the
-// resolved `vueCompilerOptions` (including any `extends` chain from the
-// consumer's tsconfig).
+// resolved compiler options and `vueCompilerOptions` (including any `extends`
+// chain from the consumer's tsconfig).
 export function getAutoCacheVersion(inputs: VersionInputs): string {
   const memoKey = `${inputs.rootDir}\0${inputs.tsconfig ?? ''}`
   const cached = cache.get(memoKey)
@@ -35,7 +34,7 @@ export function getAutoCacheVersion(inputs: VersionInputs): string {
     `@vue/language-core=${readDependencyVersion('@vue/language-core')}`,
     `@volar/typescript=${readDependencyVersion('@volar/typescript')}`,
     `typescript=${ts.version}`,
-    `vueCompilerOptions=${hashVueCompilerOptions(inputs)}`,
+    ...hashProjects(inputs),
   ]
   const computed = parts.join('|')
   cache.set(memoKey, computed)
@@ -71,23 +70,24 @@ function readSelfVersion(): string {
   return selfVersion
 }
 
-function hashVueCompilerOptions(inputs: VersionInputs): string {
+function hashProjects(inputs: VersionInputs): string[] {
   try {
-    const { vueOptions } = vueLanguageCore.createParsedCommandLineByJson(
-      ts,
-      ts.sys,
-      inputs.rootDir,
-      readTsconfigJson(inputs.tsconfig),
-      inputs.tsconfig,
-    )
-    return createHash('sha256').update(JSON.stringify(vueOptions, replacer)).digest('hex').slice(0, 16)
+    const projects = resolveDeclarationProjects(inputs.rootDir, inputs.tsconfig)
+    return [
+      `vueCompilerOptions=${hash(projects.map(project => project.vueOptions))}`,
+      `compilerOptions=${hash(projects.map(project => project.options))}`,
+    ]
   }
   catch {
     // If we can't compute the hash (bad tsconfig path that escaped
     // validation, etc.), don't take the whole build down; fall back to a
     // constant so the rest of the auto-version still does its job.
-    return 'unknown'
+    return ['vueCompilerOptions=unknown', 'compilerOptions=unknown']
   }
+}
+
+function hash(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value, replacer)).digest('hex').slice(0, 16)
 }
 
 function replacer(_key: string, value: unknown): unknown {

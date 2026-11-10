@@ -2,14 +2,11 @@ import { readFileSync } from 'node:fs'
 
 import ts from 'typescript'
 
-// Read and parse a tsconfig.json into a raw JSON object. Returns `{}` when no
-// path is provided. `@vue/language-core`'s `createParsedCommandLineByJson`
-// takes JSON-already (not a path), so anything that wants tsconfig-derived
-// options must read the file first.
-export function readTsconfigJson(tsconfig: string | undefined): Record<string, unknown> {
-  if (!tsconfig) {
-    return {}
-  }
+// Read and parse a tsconfig.json into a raw JSON object.
+// `@vue/language-core`'s `createParsedCommandLineByJson` takes JSON-already
+// (not a path), so anything that wants tsconfig-derived options must read the
+// file first.
+export function readTsconfigJson(tsconfig: string): Record<string, unknown> {
   let raw: string
   try {
     raw = readFileSync(tsconfig, 'utf8')

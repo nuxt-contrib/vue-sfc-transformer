@@ -1,4 +1,4 @@
-import { isAbsolute as nodeIsAbsolute, join as nodeJoin, normalize as nodeNormalize, relative as nodeRelative, resolve as nodeResolve } from 'node:path'
+import { dirname as nodeDirname, isAbsolute as nodeIsAbsolute, join as nodeJoin, normalize as nodeNormalize, relative as nodeRelative, resolve as nodeResolve } from 'node:path'
 
 // Paths are compared against bundler module ids and used as virtual filesystem
 // keys, both of which use forward slashes on every platform.
@@ -8,6 +8,10 @@ function toSlashes(path: string): string {
 
 export function normalize(path: string): string {
   return toSlashes(nodeNormalize(path))
+}
+
+export function dirname(path: string): string {
+  return toSlashes(nodeDirname(path))
 }
 
 export function join(...segments: string[]): string {
