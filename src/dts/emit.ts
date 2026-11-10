@@ -1,13 +1,12 @@
+import type TypeScript from 'typescript'
 import type { DtsCache } from './cache'
 import type { DeclarationProject } from './project'
-
-import * as volarTs from '@volar/typescript'
-import * as vueLanguageCore from '@vue/language-core'
-import ts from 'typescript'
+import type { Toolchain } from './toolchain'
 
 import { join, normalize } from '../utils/path'
 import { createFileSystemDtsCache, hashSfc } from './cache'
 import { resolveDeclarationProjects } from './project'
+import { loadToolchain } from './toolchain'
 import { getAutoCacheVersion } from './version'
 
 export type VueTscRunner = (
@@ -38,7 +37,7 @@ export interface EmitVueDeclarationsOptions {
 
 // Declarations are read back from next to each source file, and errors in
 // other files of the project must not suppress their emit.
-const DECLARATION_EMIT_OPTIONS: ts.CompilerOptions = {
+const DECLARATION_EMIT_OPTIONS: TypeScript.CompilerOptions = {
   allowNonTsExtensions: true,
   composite: false,
   declaration: true,
@@ -55,7 +54,8 @@ const DECLARATION_EMIT_OPTIONS: ts.CompilerOptions = {
 }
 
 const runVueTsc: VueTscRunner = (files, options) => {
-  const projects = resolveDeclarationProjects(options.rootDir, options.tsconfig, options.paths)
+  const toolchain = loadToolchain(options.rootDir)
+  const projects = resolveDeclarationProjects(toolchain, options.rootDir, options.tsconfig, options.paths)
   const projectFileNames = projects.map(project => new Set(project.fileNames))
   const groups = new Map<DeclarationProject, typeof files>()
   for (const file of files) {
@@ -66,7 +66,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
 
   const out = new Map<string, string>()
   for (const [project, group] of groups) {
-    for (const [id, dts] of emitProjectDeclarations(project, group, options.rootDir)) {
+    for (const [id, dts] of emitProjectDeclarations(toolchain, project, group, options.rootDir)) {
       out.set(id, dts)
     }
   }
@@ -74,6 +74,7 @@ const runVueTsc: VueTscRunner = (files, options) => {
 }
 
 function emitProjectDeclarations(
+  { ts, volarTs, vueLanguageCore }: Toolchain,
   project: DeclarationProject,
   files: Array<{ id: string, source: string }>,
   rootDir: string,
@@ -83,7 +84,7 @@ function emitProjectDeclarations(
     vfs.set(normalize(file.id), file.source)
   }
 
-  const compilerOptions: ts.CompilerOptions = {
+  const compilerOptions: TypeScript.CompilerOptions = {
     ...project.options,
     jsx: project.options.jsx ?? ts.JsxEmit.Preserve,
     jsxImportSource: project.options.jsxImportSource ?? 'vue',
@@ -121,7 +122,7 @@ function emitProjectDeclarations(
   )
 
   const program = createProgram({ rootNames, options: compilerOptions, host: tsHost })
-  const diagnostics: ts.Diagnostic[] = []
+  const diagnostics: TypeScript.Diagnostic[] = []
   let emitSkipped = false
   const emitted = new Set(files.map(file => normalize(file.id)))
   for (const sourceFile of program.getSourceFiles()) {
@@ -139,7 +140,7 @@ function emitProjectDeclarations(
   }
   if (emitSkipped || errorDiagnostics.length) {
     throw new Error(`[vue-sfc-transformer] failed to emit Vue declarations:\n${
-      formatDiagnostics(errorDiagnostics, rootDir)}`)
+      formatDiagnostics(ts, errorDiagnostics, rootDir)}`)
   }
 
   const out = new Map<string, string>()
@@ -154,7 +155,7 @@ function emitProjectDeclarations(
   return out
 }
 
-function formatDiagnostics(diagnostics: readonly ts.Diagnostic[], rootDir: string): string {
+function formatDiagnostics(ts: typeof TypeScript, diagnostics: readonly TypeScript.Diagnostic[], rootDir: string): string {
   return ts.formatDiagnostics(diagnostics, {
     getCanonicalFileName: fileName => fileName,
     getCurrentDirectory: () => rootDir,

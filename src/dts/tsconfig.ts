@@ -1,12 +1,12 @@
-import { readFileSync } from 'node:fs'
+import type TypeScript from 'typescript'
 
-import ts from 'typescript'
+import { readFileSync } from 'node:fs'
 
 // Read and parse a tsconfig.json into a raw JSON object.
 // `@vue/language-core`'s `createParsedCommandLineByJson` takes JSON-already
 // (not a path), so anything that wants tsconfig-derived options must read the
 // file first.
-export function readTsconfigJson(tsconfig: string): Record<string, unknown> {
+export function readTsconfigJson(ts: typeof TypeScript, tsconfig: string): Record<string, unknown> {
   let raw: string
   try {
     raw = readFileSync(tsconfig, 'utf8')
