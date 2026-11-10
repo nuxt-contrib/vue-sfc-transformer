@@ -21,7 +21,8 @@ async function callResolveId(plugin: Required<Pick<Plugin, 'resolveId'>>, id: st
 
 const root = fileURLToPath(new URL('../node_modules/.tmp/rolldown-build', import.meta.url))
 
-const FIXTURE = `<script setup lang="ts">defineProps<{ msg: string }>()</script>
+const FIXTURE = `<script setup lang="ts">defineProps<{ msg: string }>()
+</script>
 <template><div>{{ msg }}</div></template>
 `
 
@@ -487,7 +488,7 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     })
 
     it('converts TSX macros even without JSX syntax', async () => {
-      const output = await fixture('<script setup lang="tsx">defineProps<{ msg: string }>()</script>')
+      const output = await fixture('<script setup lang="tsx">defineProps<{ msg: string }>()\n</script>')
       const { scriptSetup } = parse(output).descriptor
 
       expect(scriptSetup?.content).toContain('type: String')
