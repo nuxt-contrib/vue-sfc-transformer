@@ -24,6 +24,16 @@ export function hashSfc(id: string, source: string, version: string): string {
     .digest('hex')
 }
 
+// Declarations depend on the other sources they import, so every source is
+// mixed into each key.
+export function hashSources(sources: Array<{ id: string, source: string }>): string {
+  const hash = createHash('sha256')
+  for (const { id, source } of [...sources].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+    hash.update(id).update('\0').update(source).update('\0')
+  }
+  return hash.digest('hex')
+}
+
 export function createFileSystemDtsCache(options: { dir: string }): DtsCache {
   const { dir } = options
   return {

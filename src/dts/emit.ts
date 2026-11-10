@@ -7,16 +7,20 @@ import type { Toolchain } from './toolchain'
 import process from 'node:process'
 
 import { join, normalize, resolve } from '../utils/path'
-import { createFileSystemDtsCache, hashSfc } from './cache'
+import { createFileSystemDtsCache, hashSfc, hashSources } from './cache'
 import { isDeclarationEmitDiagnostic, toDeclarationDiagnostic } from './diagnostics'
 import { resolveDeclarationProjects } from './project'
 import { loadToolchain } from './toolchain'
 import { getAutoCacheVersion } from './version'
 
 export interface VueDeclarationSource {
-  /** Absolute path of the SFC. */
+  /**
+   * Absolute path of an SFC, a `.ts` / `.mts` / `.cts` / `.tsx` script, or a
+   * declaration file. Declaration files are not emitted, only made part of
+   * the program.
+   */
   id: string
-  /** SFC source, which takes precedence over the file on disk. */
+  /** Source, which takes precedence over the file on disk. */
   source: string
 }
 
@@ -43,6 +47,7 @@ export interface EmitVueDeclarationsOptions {
    * Content-hash cache for emitted declarations. Defaults to a disk cache
    * under `<cwd>/node_modules/.cache/vue-sfc-dts/`; pass a custom `DtsCache`
    * for in-memory / Redis / etc., or `false` to disable caching entirely.
+   * Keys cover every source passed in, so changing one re-emits them all.
    * Nothing is cached from a run with errors, so they are reported again on
    * the next run.
    */
@@ -62,15 +67,16 @@ export interface EmitVueDeclarationsOptions {
 
 export interface EmitVueDeclarationsResult {
   /**
-   * Declarations keyed by absolute path, next to each SFC: `Foo.d.vue.ts`
-   * for `Foo.vue`, plus `Foo.vue.d.ts` with `emitLegacyDeclarationAlias`.
-   * An SFC without an entry had its emit skipped; `diagnostics` gives the
-   * reason.
+   * Declarations keyed by absolute path, next to each source: `Foo.d.vue.ts`
+   * for `Foo.vue` (plus `Foo.vue.d.ts` with `emitLegacyDeclarationAlias`),
+   * `foo.d.ts` for `foo.ts` or `foo.tsx`, `foo.d.mts` for `foo.mts` and
+   * `foo.d.cts` for `foo.cts`. A source without an entry had its emit
+   * skipped; `diagnostics` gives the reason.
    */
   files: Map<string, string>
   /**
-   * Diagnostics of the emitted SFCs and, when emit was skipped for no other
-   * reason, of the program options. Use `isDeclarationEmitDiagnostic` to tell
+   * Diagnostics of the emitted sources and, when emit was skipped for no
+   * other reason, of the program options. Use `isDeclarationEmitDiagnostic` to tell
    * the errors that affect declarations from other type errors.
    */
   diagnostics: DeclarationDiagnostic[]
@@ -87,8 +93,8 @@ interface DeclarationRun {
   diagnostics: DeclarationDiagnostic[]
 }
 
-// `files` are emitted; `sources` also includes cache hits, which other SFCs
-// may import.
+// `files` are emitted; `sources` also includes cache hits and declaration
+// files, which emitted files may import.
 export type VueTscRunner = (
   files: VueDeclarationSource[],
   options: ResolvedEmitOptions,
@@ -113,21 +119,42 @@ const DECLARATION_EMIT_OPTIONS: TypeScript.CompilerOptions = {
   tsBuildInfoFile: undefined,
 }
 
+const DECLARATION_FILE_RE = /\.d\.(?:[^./]+\.)?[cm]?ts$/
+const SCRIPT_FILE_RE = /\.([cm]?)tsx?$/
+
+function isDeclarationFile(id: string): boolean {
+  return DECLARATION_FILE_RE.test(id)
+}
+
+function isScriptFile(id: string): boolean {
+  return !isDeclarationFile(id) && SCRIPT_FILE_RE.test(id)
+}
+
+function declarationPath(id: string): string {
+  return isScriptFile(id)
+    ? id.replace(SCRIPT_FILE_RE, '.d.$1ts')
+    : id.replace(/\.([^./]+)$/, '.d.$1.ts')
+}
+
 const runVueTsc: VueTscRunner = (files, options, sources) => {
   const toolchain = loadToolchain(options.rootDir)
   const projects = resolveDeclarationProjects(toolchain, options.rootDir, options.tsconfig, options.paths)
   const projectFileNames = projects.map(project => new Set(project.fileNames))
+  const projectOf = (file: VueDeclarationSource): DeclarationProject => {
+    const id = normalize(file.id)
+    return projects[projectFileNames.findIndex(fileNames => fileNames.has(id))] ?? projects[0]!
+  }
   const groups = new Map<DeclarationProject, typeof files>()
   for (const file of files) {
-    const id = normalize(file.id)
-    const project = projects[projectFileNames.findIndex(fileNames => fileNames.has(id))] ?? projects[0]!
+    const project = projectOf(file)
     groups.set(project, [...groups.get(project) ?? [], file])
   }
 
   const declarations = new Map<string, string>()
   const diagnostics: DeclarationDiagnostic[] = []
   for (const [project, group] of groups) {
-    const run = emitProjectDeclarations(toolchain, project, group, sources)
+    const roots = sources.filter(file => projectOf(file) === project)
+    const run = emitProjectDeclarations(toolchain, project, group, sources, roots)
     for (const [id, dts] of run.declarations) {
       declarations.set(id, dts)
     }
@@ -141,6 +168,7 @@ function emitProjectDeclarations(
   project: DeclarationProject,
   files: VueDeclarationSource[],
   sources: VueDeclarationSource[],
+  roots: VueDeclarationSource[],
 ): DeclarationRun {
   const vfs = new Map<string, string>()
   for (const file of sources) {
@@ -169,7 +197,7 @@ function emitProjectDeclarations(
   const originalFileExists = tsHost.fileExists.bind(tsHost)
   tsHost.fileExists = filename => vfs.has(normalize(filename)) || originalFileExists(filename)
 
-  const rootNames = [...new Set([...project.fileNames, ...files.map(f => normalize(f.id)).sort()])]
+  const rootNames = [...new Set([...project.fileNames, ...roots.map(f => normalize(f.id)).sort()])]
   const createProgram = volarTs.proxyCreateProgram(
     ts,
     ts.createProgram,
@@ -213,7 +241,7 @@ function emitProjectDeclarations(
   const declarations = new Map<string, string>()
   for (const file of files) {
     // vue-tsc writes `<path>.vue.d.ts` for SFC inputs
-    const contents = vfs.get(normalize(`${file.id}.d.ts`))
+    const contents = vfs.get(normalize(isScriptFile(file.id) ? declarationPath(file.id) : `${file.id}.d.ts`))
     if (contents !== undefined) {
       declarations.set(file.id, contents)
     }
@@ -222,9 +250,10 @@ function emitProjectDeclarations(
 }
 
 /**
- * Emit declarations for Vue SFCs with `vue-tsc`'s language plugin, from the
- * project described by `tsconfig` (or default options without one). Errors
- * in other files of the project are not reported.
+ * Emit declarations for Vue SFCs and TypeScript files with `vue-tsc`'s
+ * language plugin, in one program from the project described by `tsconfig`
+ * (or default options without one), so TypeScript files can import types from
+ * SFCs. Errors in other files of the project are not reported.
  *
  * Uses the TypeScript, `@vue/language-core` and `@volar/typescript` of the
  * project's `vue-tsc` (v3 or later) when it has one, and this package's peer
@@ -245,7 +274,8 @@ export async function emitDeclarations(
   runner: VueTscRunner,
 ): Promise<EmitVueDeclarationsResult> {
   const result: EmitVueDeclarationsResult = { files: new Map(), diagnostics: [] }
-  if (files.length === 0) {
+  const emitted = files.filter(file => !isDeclarationFile(file.id))
+  if (emitted.length === 0) {
     return result
   }
 
@@ -263,13 +293,12 @@ export async function emitDeclarations(
     ? undefined
     : options.cache || createFileSystemDtsCache({ dir: join(rootDir, 'node_modules/.cache/vue-sfc-dts') })
   const version = cache
-    ? [getAutoCacheVersion(resolved), options.cacheVersion].filter(Boolean).join('|')
+    ? [getAutoCacheVersion(resolved), options.cacheVersion, `sources=${hashSources(files)}`].filter(Boolean).join('|')
     : ''
 
-  const misses: VueDeclarationSource[] = []
   const keys = new Map<string, string>()
   if (cache) {
-    await Promise.all(files.map(async (file) => {
+    await Promise.all(emitted.map(async (file) => {
       const key = hashSfc(file.id, file.source, version)
       keys.set(file.id, key)
       const hit = await cache.getItem(key)
@@ -277,14 +306,9 @@ export async function emitDeclarations(
       if (hit != null) {
         declarations.set(file.id, hit)
       }
-      else {
-        misses.push(file)
-      }
     }))
   }
-  else {
-    misses.push(...files)
-  }
+  const misses = emitted.filter(file => !declarations.has(file.id))
 
   if (misses.length) {
     const run = await runner(misses, resolved, files)
@@ -304,13 +328,13 @@ export async function emitDeclarations(
     }
   }
 
-  for (const file of files) {
+  for (const file of emitted) {
     const dts = declarations.get(file.id)
     if (dts === undefined) {
       continue
     }
-    result.files.set(file.id.replace(/\.([^./]+)$/, '.d.$1.ts'), dts)
-    if (options.emitLegacyDeclarationAlias) {
+    result.files.set(declarationPath(file.id), dts)
+    if (options.emitLegacyDeclarationAlias && !isScriptFile(file.id)) {
       result.files.set(`${file.id}.d.ts`, dts)
     }
   }

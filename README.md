@@ -162,6 +162,8 @@ vueSfcPlugin({
 
 `transformVueSfc` turns one SFC into its runtime form, and `emitVueDeclarations` emits declarations for a set of SFCs with the same options as the plugin (`cwd`, `tsconfig`, `paths`, `cache`, `cacheVersion`, `emitLegacyDeclarationAlias`). Diagnostics are returned rather than thrown, each with its `code`, `category`, `file`, `line` and `column`; `isDeclarationEmitDiagnostic` tells the ones that affect declarations from other type errors.
 
+`emitVueDeclarations` also accepts `.ts`, `.mts`, `.cts` and `.tsx` files, emitted in the same program as the SFCs so that `import type { Props } from './Foo.vue'` resolves to the component's types. They are returned as `foo.d.ts`, `foo.d.mts` and `foo.d.cts`. Declaration files (`.d.ts`) are added to the program without being emitted.
+
 ```ts
 import { readFile } from 'node:fs/promises'
 import { transform } from 'rolldown/utils'

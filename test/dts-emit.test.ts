@@ -122,21 +122,45 @@ describe('emitVueDeclarations (caching)', () => {
   })
 
   it('only re-runs the runner for cache misses on partial hits', async () => {
-    const cacheDir = join(dir, 'partial')
-    const cache = createFileSystemDtsCache({ dir: cacheDir })
+    const store = new Map<string, string>()
+    const cache: DtsCache = {
+      getItem: async key => store.get(key),
+      setItem: async (key, value) => void store.set(key, value),
+    }
     const runner = vi.fn(fakeRunner())
     const a = { id: '/a.vue', source: 'A' }
     const b = { id: '/b.vue', source: 'B' }
 
-    await emitWith([a], { cwd: dir, cache, cacheVersion: 'v1', runner })
-    expect(runner).toHaveBeenCalledTimes(1)
-    expect(runner.mock.calls[0]?.[0]).toEqual([a])
+    await emitWith([a, b], { cwd: dir, cache, runner })
+    expect(store.size).toBe(2)
+    store.delete([...store.keys()][1]!)
 
     runner.mockClear()
-    const both = await emitWith([a, b], { cwd: dir, cache, cacheVersion: 'v1', runner })
+    const both = await emitWith([a, b], { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(runner.mock.calls[0]?.[0]).toEqual([b])
+    expect(runner.mock.calls[0]?.[0]).toHaveLength(1)
+    expect(runner.mock.calls[0]?.[2]).toEqual([a, b])
     expect(both.files.size).toBe(2)
+  })
+
+  it('re-emits every source when any source changes', async () => {
+    const cache = createFileSystemDtsCache({ dir: join(dir, 'all-sources') })
+    const runner = vi.fn(fakeRunner())
+    const sfc = { id: '/src/Foo.vue', source: 'foo' }
+    const script = { id: '/src/use-foo.ts', source: 'use foo' }
+    const types = { id: '/src/types.d.ts', source: 'declare type A = 1' }
+
+    await emitWith([sfc, script, types], { cwd: dir, cache, runner })
+    expect(runner.mock.calls[0]?.[0]).toEqual(expect.arrayContaining([sfc, script]))
+    expect(runner.mock.calls[0]?.[0]).toHaveLength(2)
+
+    runner.mockClear()
+    await emitWith([sfc, script, types], { cwd: dir, cache, runner })
+    expect(runner).not.toHaveBeenCalled()
+
+    await emitWith([sfc, script, { ...types, source: 'declare type A = 2' }], { cwd: dir, cache, runner })
+    expect(runner).toHaveBeenCalledTimes(1)
+    expect(runner.mock.calls[0]?.[0]).toHaveLength(2)
   })
 
   it('does not cache declarations from a run with errors', async () => {
@@ -355,6 +379,134 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     expect(result.diagnostics).toEqual([expect.objectContaining({ code: 2883, category: 'error', kind: 'declaration', file: id })])
     expect(isDeclarationEmitDiagnostic(result.diagnostics[0]!)).toBe(true)
     expect(result.files.size).toBe(0)
+  })
+})
+
+describe('emitVueDeclarations (TypeScript sources)', () => {
+  const dir = fileURLToPath(new URL('../node_modules/.tmp/dts-emit-scripts', import.meta.url))
+
+  beforeAll(async () => {
+    await rm(dir, { force: true, recursive: true })
+  })
+  afterAll(async () => {
+    await rm(dir, { force: true, recursive: true })
+  })
+
+  const avatarGroup = [
+    '<script lang="ts">',
+    `export interface AvatarGroupProps { size?: 'xs' | 'sm' | 'md' }`,
+    '</script>',
+    '<script setup lang="ts">',
+    'defineProps<AvatarGroupProps>()',
+    '</script>',
+    '<template><div /></template>',
+  ].join('\n')
+
+  const useAvatarGroup = (specifier: string) => [
+    `import type { AvatarGroupProps } from '${specifier}'`,
+    `import { computed } from 'vue'`,
+    'export function useAvatarGroup(props: AvatarGroupProps) {',
+    `  return { size: computed(() => props.size ?? 'md') }`,
+    '}',
+  ].join('\n')
+
+  async function writeFixture(name: string, files: Record<string, string>): Promise<{ root: string, sources: VueDeclarationSource[] }> {
+    const root = join(dir, name)
+    const sources = []
+    for (const [path, source] of Object.entries(files)) {
+      await mkdir(dirname(join(root, path)), { recursive: true })
+      await writeFile(join(root, path), source)
+      sources.push({ id: join(root, path), source })
+    }
+    return { root, sources }
+  }
+
+  it('emits SFCs and TypeScript files from one program', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('mixed', {
+      'src/components/AvatarGroup.vue': avatarGroup,
+      'src/composables/useAvatarGroup.ts': useAvatarGroup('../components/AvatarGroup.vue'),
+      'src/utils/index.mts': `export const size: AmbientSize = 'sm'\n`,
+      'types/ambient.d.ts': `type AmbientSize = 'sm' | 'lg'\n`,
+    })
+
+    const result = await emitVueDeclarations(sources, { cwd: root, cache: false })
+    expect(result.diagnostics).toEqual([])
+    expect([...result.files.keys()].sort()).toEqual([
+      join(root, 'src/components/AvatarGroup.d.vue.ts'),
+      join(root, 'src/composables/useAvatarGroup.d.ts'),
+      join(root, 'src/utils/index.d.mts'),
+    ])
+    expect(result.files.get(join(root, 'src/components/AvatarGroup.d.vue.ts'))).toContain('AvatarGroupProps')
+    expect(result.files.get(join(root, 'src/composables/useAvatarGroup.d.ts'))).toContain(`ComputedRef<"xs" | "sm" | "md">`)
+    expect(result.files.get(join(root, 'src/utils/index.d.mts'))).toContain('size: AmbientSize')
+  })
+
+  it('emits `.cts` and `.tsx` files without legacy aliases', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('extensions', {
+      'Foo.vue': avatarGroup,
+      'common.cts': `export const size = 'sm' as const\n`,
+      'render.tsx': 'export const render = () => <div />\n',
+    })
+    const result = await emitVueDeclarations(sources, { cwd: root, cache: false, emitLegacyDeclarationAlias: true })
+    expect(result.diagnostics).toEqual([])
+    expect([...result.files.keys()].sort()).toEqual([
+      join(root, 'Foo.d.vue.ts'),
+      join(root, 'Foo.vue.d.ts'),
+      join(root, 'common.d.cts'),
+      join(root, 'render.d.ts'),
+    ])
+    expect(result.files.get(join(root, 'common.d.cts'))).toContain('size: "sm"')
+    expect(result.files.get(join(root, 'render.d.ts'))).toContain('JSX.Element')
+  })
+
+  it('re-emits cached declarations when a declaration file they use changes', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('cached-context', {
+      'Size.vue': '<script lang="ts">\nexport const size = ambientSize\n</script>\n<template><div /></template>\n',
+      'size.ts': 'export const size = ambientSize\n',
+      'ambient.d.ts': `declare const ambientSize: 'sm'\n`,
+    })
+    const cache = createFileSystemDtsCache({ dir: join(root, 'cache') })
+
+    const first = await emitVueDeclarations(sources, { cwd: root, cache })
+    expect(first.diagnostics).toEqual([])
+    expect(first.files.get(join(root, 'size.d.ts'))).toContain('size: "sm"')
+
+    const changed = sources.map(file => file.id.endsWith('.d.ts') ? { ...file, source: `declare const ambientSize: 'lg'\n` } : file)
+    const second = await emitVueDeclarations(changed, { cwd: root, cache })
+    expect(second.diagnostics).toEqual([])
+    expect(second.files.get(join(root, 'size.d.ts'))).toContain('size: "lg"')
+    expect(second.files.get(join(root, 'Size.d.vue.ts'))).toContain('size: "lg"')
+  })
+
+  it('resolves `.vue` imports through `paths`', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('paths', {
+      'src/components/AvatarGroup.vue': avatarGroup,
+      'src/composables/useAvatarGroup.ts': useAvatarGroup('#components/AvatarGroup.vue'),
+    })
+    const result = await emitVueDeclarations(sources, { cwd: root, cache: false, paths: { '#components/*': ['./src/components/*'] } })
+    expect(result.diagnostics).toEqual([])
+    expect(result.files.get(join(root, 'src/composables/useAvatarGroup.d.ts'))).toContain(`ComputedRef<"xs" | "sm" | "md">`)
+  })
+
+  it('returns diagnostics of TypeScript files', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('diagnostics', {
+      'node_modules/dep/package.json': JSON.stringify({ name: 'dep', types: 'index.d.ts' }),
+      'node_modules/dep/index.d.ts': `import type { Inner } from 'inner'\nexport declare function make(): Inner\n`,
+      'node_modules/dep/node_modules/inner/package.json': JSON.stringify({ name: 'inner', types: 'index.d.ts' }),
+      'node_modules/dep/node_modules/inner/index.d.ts': 'export interface Inner { value: string }\n',
+      'src/semantic.ts': `export const n: number = 'one'\n`,
+      'src/portability.ts': `import { make } from 'dep'\nexport const inner = make()\n`,
+    })
+    const emitted = sources.filter(source => source.id.includes('/src/'))
+
+    const result = await emitVueDeclarations(emitted, { cwd: root, cache: false })
+    const byCode = Object.fromEntries(result.diagnostics.map(diagnostic => [diagnostic.code, diagnostic]))
+    expect(result.diagnostics).toHaveLength(2)
+    expect(byCode[2322]).toMatchObject({ kind: 'semantic', file: join(root, 'src/semantic.ts'), line: 1, column: 14 })
+    expect(byCode[2883]).toMatchObject({ kind: 'declaration', file: join(root, 'src/portability.ts') })
+    expect(isDeclarationEmitDiagnostic(byCode[2322]!)).toBe(false)
+    expect(isDeclarationEmitDiagnostic(byCode[2883]!)).toBe(true)
+    expect([...result.files.keys()]).toEqual([join(root, 'src/semantic.d.ts')])
   })
 })
 
