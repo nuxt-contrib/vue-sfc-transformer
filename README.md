@@ -121,7 +121,15 @@ export default defineConfig({
 })
 ```
 
-Pass `tsconfig` to emit declarations from your project's TypeScript setup: its compiler options, its files (so ambient declarations such as `.nuxt/` types are available) and, for a solution-style tsconfig, the projects it references. Only errors in the emitted SFCs fail the build.
+Pass `tsconfig` to emit declarations from your project's TypeScript setup: its compiler options, its files (so ambient declarations such as `.nuxt/` types are available) and, for a solution-style tsconfig, the projects it references. Only errors in the emitted SFCs fail the build. `paths` adds `compilerOptions.paths` entries (relative to `cwd`) on top of the tsconfig's, for example to resolve the package's own name to its sources while `dist` doesn't exist yet:
+
+```ts
+vueSfcPlugin({
+  srcDir: 'src/runtime',
+  tsconfig: 'tsconfig.json',
+  paths: { 'my-module': ['./src/module.ts'], 'my-module/*': ['./src/*'] },
+})
+```
 
 Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved compiler options and `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely.
 

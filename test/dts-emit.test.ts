@@ -267,7 +267,7 @@ describe('emitVueDeclarations (project tsconfig)', () => {
     await rm(dir, { force: true, recursive: true })
   })
 
-  async function emitFixture(name: string, files: Record<string, string>, tsconfig = 'tsconfig.json'): Promise<string | undefined> {
+  async function emitFixture(name: string, files: Record<string, string>, paths?: (root: string) => Record<string, string[]>): Promise<string | undefined> {
     const root = join(dir, name)
     for (const [path, contents] of Object.entries(files)) {
       await mkdir(dirname(join(root, path)), { recursive: true })
@@ -276,7 +276,8 @@ describe('emitVueDeclarations (project tsconfig)', () => {
     const id = join(root, 'src/Component.vue')
     const result = await emitVueDeclarations([{ id, source: files['src/Component.vue']! }], {
       rootDir: root,
-      tsconfig: join(root, tsconfig),
+      tsconfig: join(root, 'tsconfig.json'),
+      paths: paths?.(root),
       cache: false,
     })
     return result.get(id)
@@ -359,6 +360,28 @@ describe('emitVueDeclarations (project tsconfig)', () => {
       'tsconfig.json': JSON.stringify({ include: ['src'] }),
       'src/Component.vue': '<script setup lang="ts">const n: number = \'one\'</script><template><div>{{ n }}</div></template>',
     })).rejects.toThrow(/Component\.vue.*TS2322/)
+  })
+
+  it('merges `paths` over the tsconfig paths', { timeout: 50_000 }, async () => {
+    const dts = await emitFixture('merged-paths', {
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: { paths: { '#kept': ['./src/kept.ts'], '#replaced': ['./src/wrong.ts'] } },
+        include: ['src'],
+      }),
+      'src/kept.ts': 'export interface Kept { label: string }\n',
+      'src/wrong.ts': 'export interface Replaced { size: number }\n',
+      'src/right.ts': `export interface Replaced { size: 'sm' }\n`,
+      'src/Component.vue': [
+        '<script setup lang="ts">',
+        `import type { Kept } from '#kept'`,
+        `import type { Replaced } from '#replaced'`,
+        `const size: Replaced['size'] = 'sm'`,
+        'defineProps<Kept>()',
+        '</script>',
+        '<template><div>{{ size }}</div></template>',
+      ].join('\n'),
+    }, root => ({ '#replaced': [join(root, 'src/right.ts')] }))
+    expect(dts).toContain('Kept')
   })
 
   it('resolves the projects referenced by a solution-style tsconfig', { timeout: 50_000 }, async () => {
