@@ -229,7 +229,7 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     ].join('\n'))
 
     const id = join(root, 'Hello.vue')
-    const source = `<script setup lang="ts">import type { Props } from './types'\ndefineProps<Props>()</script><template><div>{{ msg }}</div></template>`
+    const source = `<script setup lang="ts">import type { Props } from './types'\ndefineProps<Props>()\n</script><template><div>{{ msg }}</div></template>`
     await writeFile(id, source)
 
     const result = await emitVueDeclarations([{ id, source }], { rootDir: root, cache: false })
@@ -302,7 +302,7 @@ describe('emitVueDeclarations (project tsconfig)', () => {
   it('uses the `noUncheckedSideEffectImports` setting of the project', { timeout: 50_000 }, async () => {
     const files = (noUncheckedSideEffectImports: boolean) => ({
       'tsconfig.json': JSON.stringify({ compilerOptions: { noUncheckedSideEffectImports }, include: ['src'] }),
-      'src/Component.vue': `<script setup lang="ts">import './styles.css'\ndefineProps<{ msg: string }>()</script><template><div /></template>`,
+      'src/Component.vue': `<script setup lang="ts">import './styles.css'\ndefineProps<{ msg: string }>()\n</script><template><div /></template>`,
     })
     expect(await emitFixture('side-effect-imports-unchecked', files(false))).toContain('msg: string')
     await expect(emitFixture('side-effect-imports-checked', files(true))).rejects.toThrow('TS2882')
@@ -412,7 +412,7 @@ describe('emitVueDeclarations (project tsconfig)', () => {
       await writeFile(join(root, name, 'tsconfig.json'), JSON.stringify({ include: ['.'] }))
       await writeFile(join(root, name, 'ambient.d.ts'), `type ProjectKind = '${name}'\n`)
       const id = join(root, name, 'Component.vue')
-      const source = `<script setup lang="ts">const kind: ProjectKind = '${name}'\ndefineProps<{ kind: ProjectKind }>()</script><template><div>{{ kind }}</div></template>`
+      const source = `<script setup lang="ts">const kind: ProjectKind = '${name}'\ndefineProps<{ kind: ProjectKind }>()\n</script><template><div>{{ kind }}</div></template>`
       await writeFile(id, source)
       files.push({ id, source })
     }
