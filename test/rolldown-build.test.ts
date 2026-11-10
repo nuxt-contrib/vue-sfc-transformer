@@ -8,7 +8,7 @@ import { build } from 'tsdown'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { parse } from 'vue/compiler-sfc'
 
-import { createFileSystemDtsCache, vueSfcPlugin } from '../src/rolldown'
+import { createFileSystemDtsCache, emptyEntry, vueSfcPlugin } from '../src/rolldown'
 
 async function callResolveId(plugin: Required<Pick<Plugin, 'resolveId'>>, id: string, importer: string) {
   return (plugin.resolveId as (this: any, id: string, importer: string, options: any) => unknown).call(
@@ -368,6 +368,60 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     // not `augment.mts.js`.
     expect(output).not.toMatch(/augment\.mts\.js/)
     expect(output).toMatch(/augment\.js/)
+  })
+
+  describe('emptyEntry', () => {
+    const sfcOnlyRoot = join(root, 'sfc-only')
+
+    beforeAll(async () => {
+      await rm(sfcOnlyRoot, { force: true, recursive: true })
+      await mkdir(join(sfcOnlyRoot, 'src/runtime/components'), { recursive: true })
+      await writeFile(join(sfcOnlyRoot, 'src/runtime/components/Hello.vue'), FIXTURE)
+    })
+
+    it('builds a source tree that only contains `.vue` files', async () => {
+      await build({
+        cwd: sfcOnlyRoot,
+        entry: emptyEntry,
+        root: 'src/runtime',
+        unbundle: true,
+        dts: true,
+        fixedExtension: true,
+        outDir: 'dist',
+        logLevel: 'silent',
+        plugins: [vueSfcPlugin({ srcDir: 'src/runtime', cwd: sfcOnlyRoot, cache: false })],
+      })
+
+      const files = await readdir(join(sfcOnlyRoot, 'dist'), { recursive: true })
+      expect(files.sort()).toEqual([
+        'components',
+        'components/Hello.d.vue.ts',
+        'components/Hello.vue',
+      ])
+      const dts = await readFile(join(sfcOnlyRoot, 'dist/components/Hello.d.vue.ts'), 'utf8')
+      expect(dts).toContain('msg: string')
+    })
+
+    it('can be added alongside script entries', async () => {
+      await writeFile(join(sfcOnlyRoot, 'src/runtime/index.ts'), 'export const x: number = 1\n')
+      await build({
+        cwd: sfcOnlyRoot,
+        entry: ['src/runtime/**/*.ts', emptyEntry],
+        root: 'src/runtime',
+        unbundle: true,
+        dts: true,
+        fixedExtension: true,
+        outDir: 'dist-mixed',
+        logLevel: 'silent',
+        plugins: [vueSfcPlugin({ srcDir: 'src/runtime', cwd: sfcOnlyRoot, cache: false })],
+      })
+
+      const files = await readdir(join(sfcOnlyRoot, 'dist-mixed'), { recursive: true })
+      expect(files.filter(f => f.includes('empty-entry'))).toEqual([])
+      expect(files).toContain('index.mjs')
+      expect(files).toContain('components/Hello.vue')
+      expect(files).toContain('components/Hello.d.vue.ts')
+    })
   })
 
   describe('jsx / tsx', () => {
