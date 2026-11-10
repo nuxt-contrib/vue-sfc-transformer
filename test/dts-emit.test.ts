@@ -169,7 +169,7 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
 
   it('emits a declaration for a real .vue fixture', { timeout: 50_000 }, async () => {
     const id = join(dir, 'Hello.vue')
-    const source = `<script setup lang="ts">defineProps<{ msg: string }>()</script><template><div>{{ msg }}</div></template>`
+    const source = `<script setup lang="ts">defineProps<{ msg: string }>()\n</script><template><div>{{ msg }}</div></template>`
     await writeFile(id, source)
     const result = await emitVueDeclarations([{ id, source }], { rootDir: dir, cache: false })
     const dts = result.get(id)
@@ -180,7 +180,7 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
 
   it('emits a declaration for an SFC with a side-effect stylesheet import', { timeout: 50_000 }, async () => {
     const id = join(dir, 'Styled.vue')
-    const source = `<script setup lang="ts">import './styled.css'\ndefineProps<{ msg: string }>()</script><template><div>{{ msg }}</div></template>`
+    const source = `<script setup lang="ts">import './styled.css'\ndefineProps<{ msg: string }>()\n</script><template><div>{{ msg }}</div></template>`
     await writeFile(id, source)
     const result = await emitVueDeclarations([{ id, source }], { rootDir: dir, cache: false })
     expect(result.get(id)).toContain('msg')
