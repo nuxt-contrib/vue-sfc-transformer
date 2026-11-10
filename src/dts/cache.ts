@@ -1,7 +1,6 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import process from 'node:process'
 
 // Structurally compatible with the `getItem` / `setItem` subset of
 // unstorage's `Storage` interface, so any unstorage instance (or driver
@@ -39,7 +38,7 @@ export function createFileSystemDtsCache(options: { dir: string }): DtsCache {
       const target = join(dir, `${key}.d.ts`)
       await mkdir(dirname(target), { recursive: true })
       // tmp + rename so concurrent builds can't observe a partial write
-      const tmp = `${target}.${process.pid}.${Date.now()}.tmp`
+      const tmp = `${target}.${randomUUID()}.tmp`
       await writeFile(tmp, value)
       await rename(tmp, target)
     },

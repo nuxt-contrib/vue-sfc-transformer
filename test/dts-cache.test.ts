@@ -1,7 +1,7 @@
 import { access, mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createFileSystemDtsCache, hashSfc } from '../src/dts/cache'
 
@@ -58,6 +58,21 @@ describe('createFileSystemDtsCache', () => {
     const files = await readdir(dir)
     expect(files).toContain('atomic.d.ts')
     expect(files.some(f => f.includes('.tmp'))).toBe(false)
+  })
+
+  it('handles concurrent writes of the same key in the same millisecond', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      const cache = createFileSystemDtsCache({ dir })
+      const values = Array.from({ length: 8 }, (_, i) => `declare const _: ${i}\n`)
+      await Promise.all(values.map(value => cache.setItem('concurrent', value)))
+      expect(values).toContain(await cache.getItem('concurrent'))
+      const files = await readdir(dir)
+      expect(files.some(f => f.includes('.tmp'))).toBe(false)
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 
   it('overwrites an existing entry', async () => {
