@@ -121,7 +121,9 @@ export default defineConfig({
 })
 ```
 
-Pass `tsconfig` to emit declarations from your project's TypeScript setup: its compiler options, its files (so ambient declarations such as `.nuxt/` types are available) and, for a solution-style tsconfig, the projects it references. Only errors in the emitted SFCs fail the build. `paths` adds `compilerOptions.paths` entries (relative to `cwd`) on top of the tsconfig's, for example to resolve the package's own name to its sources while `dist` doesn't exist yet:
+Pass `tsconfig` to emit declarations from your project's TypeScript setup: its compiler options, its files (so ambient declarations such as `.nuxt/` types are available) and, for a solution-style tsconfig, the projects it references. Only errors in the emitted SFCs fail the build. When the project has `vue-tsc` (v3 or later) installed, declarations are emitted with its TypeScript, `@vue/language-core` and `@volar/typescript`, so they are checked the same way `vue-tsc` checks the project.
+
+`paths` adds `compilerOptions.paths` entries (relative to `cwd`) on top of the tsconfig's, for example to resolve the package's own name to its sources while `dist` doesn't exist yet:
 
 ```ts
 vueSfcPlugin({

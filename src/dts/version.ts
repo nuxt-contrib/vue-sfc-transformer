@@ -1,9 +1,10 @@
+import type { Toolchain } from './toolchain'
 import { createHash } from 'node:crypto'
+
 import { createRequire } from 'node:module'
 
-import ts from 'typescript'
-
 import { resolveDeclarationProjects } from './project'
+import { loadToolchain } from './toolchain'
 
 const require = createRequire(import.meta.url)
 
@@ -30,24 +31,17 @@ export function getAutoCacheVersion(inputs: VersionInputs): string {
     return cached
   }
 
+  const toolchain = loadToolchain(inputs.rootDir)
   const parts: string[] = [
     `vue-sfc-transformer=${readSelfVersion()}`,
-    `@vue/language-core=${readDependencyVersion('@vue/language-core')}`,
-    `@volar/typescript=${readDependencyVersion('@volar/typescript')}`,
-    `typescript=${ts.version}`,
-    ...hashProjects(inputs),
+    `@vue/language-core=${toolchain.versions['@vue/language-core']}`,
+    `@volar/typescript=${toolchain.versions['@volar/typescript']}`,
+    `typescript=${toolchain.versions.typescript}`,
+    ...hashProjects(toolchain, inputs),
   ]
   const computed = parts.join('|')
   cache.set(memoKey, computed)
   return computed
-}
-
-function readDependencyVersion(name: string): string {
-  // Resolving `<name>/package.json` works for any package that doesn't
-  // explicitly hide it from its `exports` map; `@vue/language-core` and
-  // `@volar/typescript` both expose it.
-  const pkg = require(`${name}/package.json`) as { version?: string }
-  return pkg.version ?? 'unknown'
 }
 
 let selfVersion: string | undefined
@@ -71,9 +65,9 @@ function readSelfVersion(): string {
   return selfVersion
 }
 
-function hashProjects(inputs: VersionInputs): string[] {
+function hashProjects(toolchain: Toolchain, inputs: VersionInputs): string[] {
   try {
-    const projects = resolveDeclarationProjects(inputs.rootDir, inputs.tsconfig, inputs.paths)
+    const projects = resolveDeclarationProjects(toolchain, inputs.rootDir, inputs.tsconfig, inputs.paths)
     return [
       `vueCompilerOptions=${hash(projects.map(project => project.vueOptions))}`,
       `compilerOptions=${hash(projects.map(project => project.options))}`,
