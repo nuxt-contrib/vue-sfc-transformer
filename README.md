@@ -123,6 +123,12 @@ export default defineConfig({
 
 Pass `tsconfig` to emit declarations from your project's TypeScript setup: its compiler options, its files (so ambient declarations such as `.nuxt/` types are available) and, for a solution-style tsconfig, the projects it references. Only errors in the emitted SFCs fail the build. When the project has `vue-tsc` (v3 or later) installed, declarations are emitted with its TypeScript, `@vue/language-core` and `@volar/typescript`, so they are checked the same way `vue-tsc` checks the project.
 
+For projects that are type-checked separately, `declarationDiagnostics: 'emit'` fails the build only on errors that make declarations missing or wrong: syntax errors, declaration emit errors such as TS2742 (an inferred type that cannot be named portably) and skipped emit. Other type errors are reported as warnings.
+
+```ts
+vueSfcPlugin({ srcDir: 'src/runtime', tsconfig: 'tsconfig.json', declarationDiagnostics: 'emit' })
+```
+
 `paths` adds `compilerOptions.paths` entries (relative to `cwd`) on top of the tsconfig's, for example to resolve the package's own name to its sources while `dist` doesn't exist yet:
 
 ```ts
@@ -148,6 +154,30 @@ vueSfcPlugin({
   srcDir: 'src',
   cache: createStorage({ driver: redisDriver({ url: 'redis://…' }) }),
 })
+```
+
+## Transforming SFCs directly
+
+`vue-sfc-transformer/core` exports the pieces the rolldown plugin is built on, for tools that manage their own files and builds.
+
+`transformVueSfc` turns one SFC into its runtime form, and `emitVueDeclarations` emits declarations for a set of SFCs with the same options as the plugin (`cwd`, `tsconfig`, `paths`, `cache`, `cacheVersion`, `emitLegacyDeclarationAlias`). Diagnostics are returned rather than thrown, each with its `code`, `category`, `file`, `line` and `column`; `isDeclarationEmitDiagnostic` tells the ones that affect declarations from other type errors.
+
+`emitVueDeclarations` also accepts `.ts`, `.mts`, `.cts` and `.tsx` files, emitted in the same program as the SFCs so that `import type { Props } from './Foo.vue'` resolves to the component's types. They are returned as `foo.d.ts`, `foo.d.mts` and `foo.d.cts`. Declaration files (`.d.ts`) are added to the program without being emitted.
+
+```ts
+import { readFile } from 'node:fs/promises'
+import { transform } from 'rolldown/utils'
+import { emitVueDeclarations, isDeclarationEmitDiagnostic, transformVueSfc } from 'vue-sfc-transformer/core'
+
+const id = '/project/src/runtime/Button.vue'
+const source = await readFile(id, 'utf8')
+
+const { code } = await transformVueSfc(source, id, { transform })
+
+const { files, diagnostics } = await emitVueDeclarations([{ id, source }], { cwd: '/project', tsconfig: 'tsconfig.json' })
+files.get('/project/src/runtime/Button.d.vue.ts')
+
+const fatal = diagnostics.filter(d => d.category === 'error' && isDeclarationEmitDiagnostic(d))
 ```
 
 ## 💻 Development

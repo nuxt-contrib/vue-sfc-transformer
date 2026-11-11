@@ -2,8 +2,9 @@ import type { Plugin } from 'rolldown'
 import type { DtsCache, VueSfcPluginOptions } from '../src/rolldown'
 
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { rolldown } from 'rolldown'
 import { build } from 'tsdown'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { parse } from 'vue/compiler-sfc'
@@ -406,6 +407,56 @@ describe('vueSfcPlugin (end-to-end build)', { timeout: 60_000 }, () => {
     // not `augment.mts.js`.
     expect(output).not.toMatch(/augment\.mts\.js/)
     expect(output).toMatch(/augment\.js/)
+  })
+
+  describe('declarationDiagnostics', () => {
+    const diagnosticsRoot = join(root, 'declaration-diagnostics')
+
+    beforeAll(async () => {
+      await rm(diagnosticsRoot, { force: true, recursive: true })
+      const fixture: Record<string, string> = {
+        'tsconfig.json': JSON.stringify({ include: ['src'] }),
+        'src/index.ts': 'export const x = 1\n',
+        'src/semantic/Semantic.vue': `<script setup lang="ts">\nconst n: number = 'one'\ndefineProps<{ msg: string }>()\n</script>\n<template><div>{{ n }}</div></template>\n`,
+        'src/portability/Exposed.vue': `<script setup lang="ts">\nimport { make } from 'dep'\ndefineExpose({ inner: make() })\n</script>\n<template><div /></template>\n`,
+        'node_modules/dep/package.json': JSON.stringify({ name: 'dep', types: 'index.d.ts' }),
+        'node_modules/dep/index.d.ts': `import type { Inner } from 'inner'\nexport declare function make(): Inner\n`,
+        'node_modules/dep/node_modules/inner/package.json': JSON.stringify({ name: 'inner', types: 'index.d.ts' }),
+        'node_modules/dep/node_modules/inner/index.d.ts': 'export interface Inner { value: string }\n',
+      }
+      for (const [path, contents] of Object.entries(fixture)) {
+        await mkdir(dirname(join(diagnosticsRoot, path)), { recursive: true })
+        await writeFile(join(diagnosticsRoot, path), contents)
+      }
+    })
+
+    async function bundle(srcDir: string, declarationDiagnostics?: VueSfcPluginOptions['declarationDiagnostics']) {
+      const warnings: string[] = []
+      const build = await rolldown({
+        cwd: diagnosticsRoot,
+        input: join(diagnosticsRoot, 'src/index.ts'),
+        onwarn: warning => warnings.push(warning.message),
+        plugins: [vueSfcPlugin({ srcDir, cwd: diagnosticsRoot, tsconfig: 'tsconfig.json', cache: false, declarationDiagnostics })],
+      })
+      const { output } = await build.generate({})
+      return { files: Object.fromEntries(output.map(file => [file.fileName, file.type === 'asset' ? String(file.source) : file.code])), warnings }
+    }
+
+    it('fails on any error in the emitted SFCs by default', async () => {
+      await expect(bundle('src/semantic')).rejects.toThrow(`src/semantic/Semantic.vue(2,7): error TS2322: Type 'string' is not assignable to type 'number'.`)
+      await expect(bundle('src/semantic', 'all')).rejects.toThrow('TS2322')
+    })
+
+    it('warns on errors that do not affect declarations with `emit`', async () => {
+      const { files, warnings } = await bundle('src/semantic', 'emit')
+      expect(warnings).toEqual([expect.stringContaining(`src/semantic/Semantic.vue(2,7): error TS2322: Type 'string' is not assignable to type 'number'.`)])
+      expect(files['Semantic.vue']).toContain('const n = "one"')
+      expect(files['Semantic.d.vue.ts']).toContain('msg: string')
+    })
+
+    it('fails on declaration emit errors with `emit`', async () => {
+      await expect(bundle('src/portability', 'emit')).rejects.toThrow(/Exposed\.vue.*TS2883/)
+    })
   })
 
   describe('emptyEntry', () => {
