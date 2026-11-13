@@ -40,6 +40,14 @@ export function loadToolchain(rootDir: string): Toolchain {
   return toolchain
 }
 
+// Before 3.3.6, `@vue/language-core` caches the TypeScript AST of each SFC
+// block in a module-level `Map`, so disposing virtual code leaks every block
+// created after it (vuejs/language-tools@c82592d).
+export function canDisposeVirtualCode({ versions }: Toolchain): boolean {
+  const [major = 0, minor = 0, patch = 0] = versions['@vue/language-core'].split(/[.-]/, 3).map(Number)
+  return major > 3 || (major === 3 && (minor > 3 || (minor === 3 && patch >= 6)))
+}
+
 function resolveVueTsc(rootDir: string): string | undefined {
   try {
     const require = createRequire(resolve(rootDir, 'package.json'))
