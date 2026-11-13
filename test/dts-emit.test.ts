@@ -1,14 +1,16 @@
 import type { DtsCache } from '../src/dts/cache'
 import type { DeclarationDiagnostic } from '../src/dts/diagnostics'
 import type { EmitVueDeclarationsOptions, EmitVueDeclarationsResult, VueDeclarationSource, VueTscRunner } from '../src/dts/emit'
+import type { VueDeclarationSession } from '../src/dts/session'
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { createFileSystemDtsCache, emitVueDeclarations, isDeclarationEmitDiagnostic } from '../src/core'
+import { createFileSystemDtsCache, createVueDeclarationSession, emitVueDeclarations, isDeclarationEmitDiagnostic } from '../src/core'
 import { emitDeclarations } from '../src/dts/emit'
+import { loadToolchain } from '../src/dts/toolchain'
 
 function dtsOf(result: EmitVueDeclarationsResult, id: string): string | undefined {
   return result.files.get(id.replace(/\.vue$/, '.d.vue.ts'))
@@ -476,6 +478,58 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     expect(second.diagnostics).toEqual([])
     expect(second.files.get(join(root, 'size.d.ts'))).toContain('size: "lg"')
     expect(second.files.get(join(root, 'Size.d.vue.ts'))).toContain('size: "lg"')
+  })
+
+  it('emits declarations from changed sources and dependencies with a session', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session', {
+      'node_modules/dep/package.json': JSON.stringify({ name: 'dep', types: 'index.d.ts' }),
+      'node_modules/dep/index.d.ts': `export declare const depSize: 'sm'\n`,
+      'Size.vue': `<script lang="ts">\nimport { size } from './size'\nexport const sfcSize = size\n</script>\n<template><div /></template>\n`,
+      'size.ts': `import { depSize } from 'dep'\nexport const size = depSize\n`,
+    })
+    const emitted = sources.filter(source => !source.id.includes('/dep/'))
+    const session = createVueDeclarationSession()
+    const emit = async (files: VueDeclarationSource[]) => {
+      const result = await emitVueDeclarations(files, { cwd: root, cache: false, session })
+      expect(result.diagnostics).toEqual([])
+      return [result.files.get(join(root, 'size.d.ts')), result.files.get(join(root, 'Size.d.vue.ts'))]
+    }
+
+    const [size, sfc] = await emit(emitted)
+    expect(size).toContain('size: "sm"')
+    expect(sfc).toContain('sfcSize: "sm"')
+
+    await writeFile(join(root, 'node_modules/dep/index.d.ts'), `export declare const depSize: 'lg'\n`)
+    const [dependencySize, dependencySfc] = await emit(emitted)
+    expect(dependencySize).toContain('size: "lg"')
+    expect(dependencySfc).toContain('sfcSize: "lg"')
+
+    const [sourceSize, sourceSfc] = await emit(emitted.map(file => file.id.endsWith('size.ts') ? { ...file, source: `export const size = ['md' as const][0]\n` } : file))
+    expect(sourceSize).toContain('size: "md"')
+    expect(sourceSfc).toContain('sfcSize: "md"')
+  })
+
+  it('reuses parsed sources with a session', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-parses', {
+      'Size.vue': `<script lang="ts">\nimport { size } from './size'\nexport const sfcSize = size\n</script>\n<template><div /></template>\n`,
+      'size.ts': `export const size = 'sm' as const\n`,
+    })
+    const { performance } = loadToolchain(root).ts as unknown as { performance: { enable: () => void, disable: () => void, getCount: (name: string) => number } }
+    const countParses = async (session?: VueDeclarationSession) => {
+      performance.enable()
+      try {
+        expect((await emitVueDeclarations(sources, { cwd: root, cache: false, session })).diagnostics).toEqual([])
+        return performance.getCount('beforeParse')
+      }
+      finally {
+        performance.disable()
+      }
+    }
+
+    const session = createVueDeclarationSession()
+    const fresh = await countParses(session)
+    expect(await countParses(session)).toBeLessThan(fresh / 2)
+    expect(await countParses()).toBe(fresh)
   })
 
   it('resolves `.vue` imports through `paths`', { timeout: 50_000 }, async () => {

@@ -1,4 +1,4 @@
-import type { VueDeclarationSource } from '../src/core'
+import type { VueDeclarationSession, VueDeclarationSource } from '../src/core'
 
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -8,7 +8,7 @@ import { setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { emitVueDeclarations } from '../src/core'
+import { createVueDeclarationSession, emitVueDeclarations } from '../src/core'
 
 setFlagsFromString('--expose-gc')
 const gc = runInNewContext('gc') as () => void
@@ -54,8 +54,8 @@ describe('emitVueDeclarations (memory)', () => {
     await rm(dir, { force: true, recursive: true })
   })
 
-  async function emit(files: VueDeclarationSource[]): Promise<void> {
-    const result = await emitVueDeclarations(files, { cwd: dir, cache: false })
+  async function emit(files: VueDeclarationSource[], session?: VueDeclarationSession): Promise<void> {
+    const result = await emitVueDeclarations(files, { cwd: dir, cache: false, session })
     expect(result.diagnostics).toEqual([])
   }
 
@@ -64,6 +64,16 @@ describe('emitVueDeclarations (memory)', () => {
     const before = await heapUsed()
     for (let i = 0; i < 4; i++) {
       await emit(sources)
+    }
+    expect(await heapUsed() - before).toBeLessThan(30 * 1024 * 1024)
+  })
+
+  it('holds the sources of one call in a session', { timeout: 60_000 }, async () => {
+    const session = createVueDeclarationSession()
+    await emit(sources, session)
+    const before = await heapUsed()
+    for (let i = 0; i < 4; i++) {
+      await emit(sources.map(file => file === types ? { ...file, source: `${file.source}export const version = ${i}\n` } : file), session)
     }
     expect(await heapUsed() - before).toBeLessThan(30 * 1024 * 1024)
   })
