@@ -2,6 +2,7 @@ import type TypeScript from 'typescript'
 import type { DtsCache } from './cache'
 import type { DeclarationDiagnostic } from './diagnostics'
 import type { DeclarationProject } from './project'
+import type { SourceFileReuse, VueDeclarationSession } from './session'
 import type { Toolchain } from './toolchain'
 
 import process from 'node:process'
@@ -10,7 +11,8 @@ import { join, normalize, resolve } from '../utils/path'
 import { createFileSystemDtsCache, hashSfc, hashSources } from './cache'
 import { isDeclarationEmitDiagnostic, toDeclarationDiagnostic } from './diagnostics'
 import { resolveDeclarationProjects } from './project'
-import { loadToolchain } from './toolchain'
+import { reuseSourceFiles } from './session'
+import { canDisposeVirtualCode, loadToolchain } from './toolchain'
 import { getAutoCacheVersion } from './version'
 
 export interface VueDeclarationSource {
@@ -63,6 +65,11 @@ export interface EmitVueDeclarationsOptions {
    * for each SFC.
    */
   emitLegacyDeclarationAlias?: boolean
+  /**
+   * A session from `createVueDeclarationSession()`, to reuse the sources
+   * parsed by the previous call it was passed to.
+   */
+  session?: VueDeclarationSession
 }
 
 export interface EmitVueDeclarationsResult {
@@ -86,6 +93,7 @@ interface ResolvedEmitOptions {
   rootDir: string
   tsconfig?: string
   paths?: Record<string, string[]>
+  session?: VueDeclarationSession
 }
 
 interface DeclarationRun {
@@ -150,26 +158,30 @@ const runVueTsc: VueTscRunner = (files, options, sources) => {
     groups.set(project, [...groups.get(project) ?? [], file])
   }
 
+  const reuse = options.session && reuseSourceFiles(options.session, toolchain.ts)
   const declarations = new Map<string, string>()
   const diagnostics: DeclarationDiagnostic[] = []
   for (const [project, group] of groups) {
     const roots = sources.filter(file => projectOf(file) === project)
-    const run = emitProjectDeclarations(toolchain, project, group, sources, roots)
+    const run = emitProjectDeclarations(toolchain, project, group, sources, roots, reuse)
     for (const [id, dts] of run.declarations) {
       declarations.set(id, dts)
     }
     diagnostics.push(...run.diagnostics)
   }
+  reuse?.commit()
   return { declarations, diagnostics }
 }
 
 function emitProjectDeclarations(
-  { ts, volarTs, vueLanguageCore }: Toolchain,
+  toolchain: Toolchain,
   project: DeclarationProject,
   files: VueDeclarationSource[],
   sources: VueDeclarationSource[],
   roots: VueDeclarationSource[],
+  reuse: SourceFileReuse | undefined,
 ): DeclarationRun {
+  const { ts, volarTs, vueLanguageCore } = toolchain
   const vfs = new Map<string, string>()
   for (const file of sources) {
     vfs.set(normalize(file.id), file.source)
@@ -196,23 +208,52 @@ function emitProjectDeclarations(
   }
   const originalFileExists = tsHost.fileExists.bind(tsHost)
   tsHost.fileExists = filename => vfs.has(normalize(filename)) || originalFileExists(filename)
+  reuse?.wrap(tsHost, compilerOptions)
 
   const rootNames = [...new Set([...project.fileNames, ...roots.map(f => normalize(f.id)).sort()])]
+  let scripts: { delete: (id: string) => void } | undefined
   const createProgram = volarTs.proxyCreateProgram(
     ts,
     ts.createProgram,
-    (tsRef, programOptions) => {
-      const vueLanguagePlugin = vueLanguageCore.createVueLanguagePlugin(
-        tsRef,
-        programOptions.options,
-        project.vueOptions,
-        (id: string) => id,
-      )
-      return [vueLanguagePlugin]
-    },
+    (tsRef, programOptions) => ({
+      languagePlugins: [
+        vueLanguageCore.createVueLanguagePlugin(
+          tsRef,
+          programOptions.options,
+          project.vueOptions,
+          (id: string) => id,
+        ),
+      ],
+      setup: (language) => {
+        if (canDisposeVirtualCode(toolchain)) {
+          scripts = language.scripts
+        }
+      },
+    }),
   )
 
   const program = createProgram({ rootNames, options: compilerOptions, host: tsHost })
+  try {
+    return emitProgramDeclarations(ts, program, files, vfs)
+  }
+  finally {
+    // The virtual code of each SFC retains the program that created it.
+    // `@vue/language-core` registers it at module level, and
+    // `@vue/compiler-core` keeps the options of its last template parse,
+    // whose error callback references it.
+    for (const sourceFile of program.getSourceFiles()) {
+      scripts?.delete(sourceFile.fileName)
+    }
+    vueLanguageCore.parse('')
+  }
+}
+
+function emitProgramDeclarations(
+  ts: typeof TypeScript,
+  program: TypeScript.Program,
+  files: VueDeclarationSource[],
+  vfs: Map<string, string>,
+): DeclarationRun {
   const diagnostics: DeclarationDiagnostic[] = []
   let emitSkipped = false
   const emitted = new Set(files.map(file => normalize(file.id)))
@@ -286,6 +327,7 @@ export async function emitDeclarations(
     paths: options.paths
       ? Object.fromEntries(Object.entries(options.paths).map(([key, targets]) => [key, targets.map(target => resolve(rootDir, target))]))
       : undefined,
+    session: options.session,
   }
 
   const declarations = new Map<string, string>()

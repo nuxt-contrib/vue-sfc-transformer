@@ -5,19 +5,19 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { loadToolchain } from '../src/dts/toolchain'
+import { canDisposeVirtualCode, loadToolchain } from '../src/dts/toolchain'
 import { getAutoCacheVersion } from '../src/dts/version'
 
 const dir = fileURLToPath(new URL('../node_modules/.tmp/dts-toolchain', import.meta.url))
 const languageCore = createRequire(import.meta.url).resolve('@vue/language-core')
 
-async function fixture(name: string, vueTscVersion: string): Promise<string> {
+async function fixture(name: string, vueTscVersion: string, languageCoreVersion = '3.0.0-project'): Promise<string> {
   const root = join(dir, name)
   await mkdir(join(root, 'node_modules/vue-tsc'), { recursive: true })
   await mkdir(join(root, 'node_modules/@vue/language-core'), { recursive: true })
   await writeFile(join(root, 'package.json'), JSON.stringify({ name }))
   await writeFile(join(root, 'node_modules/vue-tsc/package.json'), JSON.stringify({ name: 'vue-tsc', version: vueTscVersion }))
-  await writeFile(join(root, 'node_modules/@vue/language-core/package.json'), JSON.stringify({ name: '@vue/language-core', version: '3.0.0-project', main: 'index.js' }))
+  await writeFile(join(root, 'node_modules/@vue/language-core/package.json'), JSON.stringify({ name: '@vue/language-core', version: languageCoreVersion, main: 'index.js' }))
   await writeFile(join(root, 'node_modules/@vue/language-core/index.js'), `module.exports = require(${JSON.stringify(languageCore)})\n`)
   return root
 }
@@ -45,6 +45,12 @@ describe('loadToolchain', () => {
     const root = await fixture('relative-root', '3.9.0')
     const toolchain = loadToolchain(relative(process.cwd(), root))
     expect(toolchain.versions['@vue/language-core']).toBe('3.0.0-project')
+  })
+
+  it('disposes virtual code from `@vue/language-core` 3.3.6', async () => {
+    expect(canDisposeVirtualCode(loadToolchain(await fixture('language-core-3.3.5', '3.3.5', '3.3.5')))).toBe(false)
+    expect(canDisposeVirtualCode(loadToolchain(await fixture('language-core-3.3.6', '3.3.6', '3.3.6')))).toBe(true)
+    expect(canDisposeVirtualCode(loadToolchain(await fixture('language-core-3.4.0', '3.4.0-beta.1', '3.4.0-beta.1')))).toBe(true)
   })
 
   it('ignores `vue-tsc` before v3', async () => {

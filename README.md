@@ -180,6 +180,19 @@ files.get('/project/src/runtime/Button.d.vue.ts')
 const fatal = diagnostics.filter(d => d.category === 'error' && isDeclarationEmitDiagnostic(d))
 ```
 
+To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. The session holds the parsed sources of its last call until it is garbage collected.
+
+```ts
+import type { VueDeclarationSource } from 'vue-sfc-transformer/core'
+import { createVueDeclarationSession, emitVueDeclarations } from 'vue-sfc-transformer/core'
+
+const session = createVueDeclarationSession()
+
+function rebuild(sources: VueDeclarationSource[]) {
+  return emitVueDeclarations(sources, { cwd: '/project', session })
+}
+```
+
 ## 💻 Development
 
 - Clone this repository

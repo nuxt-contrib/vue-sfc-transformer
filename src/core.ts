@@ -11,4 +11,5 @@ export {
   type EmitVueDeclarationsResult,
   type VueDeclarationSource,
 } from './dts/emit'
+export { createVueDeclarationSession, type VueDeclarationSession } from './dts/session'
 export { type Transform, transformVueSfc, type TransformVueSfcOptions, type TransformVueSfcResult } from './transform'
