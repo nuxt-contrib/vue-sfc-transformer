@@ -53,6 +53,67 @@ describe('transformVueSfc', () => {
   it('throws when the SFC cannot be parsed', async () => {
     await expect(transformVueSfc('<template><div></template>\n', '/src/Broken.vue')).rejects.toThrow('/src/Broken.vue: Element is missing end tag.')
   })
+
+  it('resolves prop types through a virtual tsconfig served via `script.fs`', async () => {
+    const id = '/virtual/vue-sfc-transformer/Flags.vue'
+    const tsconfigPath = '/virtual/vue-sfc-transformer/tsconfig.json'
+    const flagsPath = '/virtual/vue-sfc-transformer/types/flags.ts'
+
+    const tsconfig = JSON.stringify({
+      compilerOptions: { paths: { '#alias': ['./types/flags.ts'] } },
+    })
+    const flags = 'export type Flags = { enabled: boolean }\n'
+
+    const fs = {
+      fileExists(file: string): boolean {
+        return file === tsconfigPath || file === flagsPath
+      },
+      readFile(file: string): string | undefined {
+        if (file === tsconfigPath)
+          return tsconfig
+        if (file === flagsPath)
+          return flags
+        return undefined
+      },
+    }
+
+    const source = [
+      '<script setup lang="ts">',
+      'import type { Flags } from \'#alias\'',
+      'defineProps<Flags>()',
+      '</script>',
+    ].join('\n')
+
+    await expect(transformVueSfc(source, id)).rejects.toThrow('Failed to resolve import source "#alias".')
+
+    const result = await transformVueSfc(source, id, { script: { fs } })
+    expect(result.code).toContain('type: Boolean')
+  })
+
+  it('resolves prop types from `script.globalTypeFiles`', async () => {
+    const id = '/virtual/vue-sfc-transformer/Global.vue'
+    const globalFile = '/virtual/vue-sfc-transformer/global.d.ts'
+
+    const fs = {
+      fileExists(file: string): boolean {
+        return file === globalFile
+      },
+      readFile(file: string): string | undefined {
+        if (file === globalFile)
+          return 'declare interface GlobalProps { enabled: boolean }\n'
+        return undefined
+      },
+    }
+
+    const source = [
+      '<script setup lang="ts">',
+      'defineProps<GlobalProps>()',
+      '</script>',
+    ].join('\n')
+
+    const result = await transformVueSfc(source, id, { script: { fs, globalTypeFiles: [globalFile] } })
+    expect(result.code).toContain('type: Boolean')
+  })
 })
 
 describe('isDeclarationEmitDiagnostic', () => {

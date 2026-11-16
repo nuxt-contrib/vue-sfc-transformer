@@ -1,4 +1,5 @@
 import type { transform as rolldownTransform } from 'rolldown/utils'
+import type { SFCScriptCompileOptions } from 'vue/compiler-sfc'
 import type { KnownSFCLang } from './utils/script-lang'
 
 import { parse } from 'vue/compiler-sfc'
@@ -10,6 +11,20 @@ import { transpileVueTemplate } from './utils/template'
 
 export type Transform = typeof rolldownTransform
 
+export interface TransformVueSfcScriptOptions {
+  /**
+   * File system access methods used to resolve types imported in SFC macros
+   * such as `defineProps<Props>()`. Defaults to TypeScript's own file system.
+   * Pass a custom `fs` to serve virtual `tsconfig.json` / module files, for
+   * example when `paths` aliases resolve only through the build's own project.
+   */
+  fs?: SFCScriptCompileOptions['fs']
+  /**
+   * Fully resolved file system paths to files to parse for global types.
+   */
+  globalTypeFiles?: string[]
+}
+
 export interface TransformVueSfcOptions {
   /**
    * `transform` from `rolldown/utils`, used to strip TypeScript from script
@@ -18,6 +33,11 @@ export interface TransformVueSfcOptions {
    * `rolldown` peer dependency, imported on first use.
    */
   transform?: Transform
+  /**
+   * Options forwarded to `@vue/compiler-sfc` when it resolves the types of
+   * script setup macros such as `defineProps<Props>()` and `defineModel()`.
+   */
+  script?: TransformVueSfcScriptOptions
 }
 
 export interface TransformVueSfcResult {
@@ -99,7 +119,7 @@ export async function transformVueSfc(code: string, id: string, options: Transfo
     // `setup.lang` decides; `isTs` only applies when the setup block itself is
     // untagged (a sibling `<script lang="ts">` implies TS for it too).
     const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
-    const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, id) : setup
+    const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, id, options.script) : setup
     const content = setupIsTs
       ? await transpileScript(transform, block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
       : block.content
