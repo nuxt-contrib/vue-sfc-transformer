@@ -1,4 +1,5 @@
 import type { transform as rolldownTransform } from 'rolldown/utils'
+import type { SimpleTypeResolveOptions } from 'vue/compiler-sfc'
 import type { KnownSFCLang } from './utils/script-lang'
 
 import { parse } from 'vue/compiler-sfc'
@@ -10,6 +11,8 @@ import { transpileVueTemplate } from './utils/template'
 
 export type Transform = typeof rolldownTransform
 
+export type TransformVueSfcScriptOptions = Pick<SimpleTypeResolveOptions, 'fs' | 'globalTypeFiles'>
+
 export interface TransformVueSfcOptions {
   /**
    * `transform` from `rolldown/utils`, used to strip TypeScript from script
@@ -18,6 +21,11 @@ export interface TransformVueSfcOptions {
    * `rolldown` peer dependency, imported on first use.
    */
   transform?: Transform
+  /**
+   * Options forwarded to `@vue/compiler-sfc` when it resolves the types of
+   * script setup macros such as `defineProps<Props>()` and `defineModel()`.
+   */
+  script?: TransformVueSfcScriptOptions
 }
 
 export interface TransformVueSfcResult {
@@ -99,7 +107,7 @@ export async function transformVueSfc(code: string, id: string, options: Transfo
     // `setup.lang` decides; `isTs` only applies when the setup block itself is
     // untagged (a sibling `<script lang="ts">` implies TS for it too).
     const setupIsTs = setup.lang === 'ts' || setup.lang === 'tsx' || (!setup.lang && isTs)
-    const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, id) : setup
+    const block = setupIsTs ? await preTranspileScriptSetup(sfc.descriptor, id, options.script) : setup
     const content = setupIsTs
       ? await transpileScript(transform, block.content, setup.lang === 'tsx' ? 'tsx' : 'ts')
       : block.content

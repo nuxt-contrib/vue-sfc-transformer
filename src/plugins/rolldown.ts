@@ -1,6 +1,6 @@
 import type { Plugin } from 'rolldown'
 import type { DtsCache } from '../dts/cache'
-import type { Transform } from '../transform'
+import type { Transform, TransformVueSfcScriptOptions } from '../transform'
 
 import { readFile } from 'node:fs/promises'
 import process from 'node:process'
@@ -61,6 +61,10 @@ export interface VueSfcPluginOptions {
   // the build so that only one copy of rolldown is loaded. Defaults to the
   // `rolldown` peer dependency, imported on first use.
   transform?: Transform
+  // Options forwarded to `@vue/compiler-sfc` when it resolves the types of
+  // script setup macros such as `defineProps<Props>()` and `defineModel()`.
+  // Use `script.fs` to serve a virtual tsconfig for `paths` aliases.
+  script?: TransformVueSfcScriptOptions
   // Which errors in the emitted SFCs fail the build: any (`'all'`, the
   // default), or only those that make declarations missing or wrong, such as
   // syntax errors, TS2742 and skipped emit (`'emit'`), with other errors
@@ -154,7 +158,7 @@ export function vueSfcPlugin(pluginOptions: VueSfcPluginOptions): Plugin {
       await Promise.all(files.map(async (file) => {
         const raw = await readFile(file, 'utf8')
         rawSources.set(file, raw)
-        const { code } = await transformVueSfc(raw, file, { transform: pluginOptions.transform })
+        const { code } = await transformVueSfc(raw, file, { transform: pluginOptions.transform, script: pluginOptions.script })
         runtimeByFile.set(file, code)
         this.addWatchFile(file)
       }))

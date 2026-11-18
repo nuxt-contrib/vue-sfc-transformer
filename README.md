@@ -107,6 +107,8 @@ import { transform } from 'rolldown/utils'
 vueSfcPlugin({ srcDir: 'src', transform })
 ```
 
+`vueSfcPlugin` also accepts `script`, forwarded to the same `script.fs` / `script.globalTypeFiles` options `transformVueSfc` exposes for resolving script setup macro types.
+
 `.vue` files are emitted by the plugin and should not be listed as entries. To build a directory that may contain no script files at all, add `emptyEntry` to the entries. The plugin resolves it to an empty module and removes its chunk from the output. tsdown's CommonJS declaration build (`format: 'cjs'` with `dts`) does not run plugins, so it also needs `dts.entry` patterns that leave `emptyEntry` out.
 
 ```ts
@@ -179,6 +181,24 @@ files.get('/project/src/runtime/Button.d.vue.ts')
 
 const fatal = diagnostics.filter(d => d.category === 'error' && isDeclarationEmitDiagnostic(d))
 ```
+
+`transformVueSfc` resolves the types of script setup macros such as `defineProps<Props>()` with `@vue/compiler-sfc`, which reads the nearest `tsconfig.json` to resolve `paths` aliases. Pass `script.fs` to serve that tsconfig from a virtual file system, falling back to `ts.sys` for everything else:
+
+```ts
+import ts from 'typescript'
+
+const { code } = await transformVueSfc(source, id, {
+  script: {
+    fs: {
+      fileExists: file => file === tsconfigPath || ts.sys.fileExists(file),
+      readFile: file => file === tsconfigPath ? tsconfig : ts.sys.readFile(file),
+      realpath: ts.sys.realpath,
+    },
+  },
+})
+```
+
+`script.globalTypeFiles` adds fully resolved files to parse for global types. Both options mirror `@vue/compiler-sfc`'s `compileScript` options.
 
 To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. The session holds the parsed sources of its last call until it is garbage collected.
 

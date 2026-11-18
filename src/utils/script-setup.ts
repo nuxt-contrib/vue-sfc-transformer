@@ -1,5 +1,5 @@
 import type { ArrayExpression, CallExpression, Expression, Identifier, Node, ObjectExpression, ObjectProperty, StringLiteral } from '@babel/types'
-import type { SFCDescriptor, SFCScriptBlock, SimpleTypeResolveContext } from 'vue/compiler-sfc'
+import type { SFCDescriptor, SFCScriptBlock, SimpleTypeResolveContext, SimpleTypeResolveOptions } from 'vue/compiler-sfc'
 
 import { babelParse, extractRuntimeEmits, extractRuntimeProps, inferRuntimeType, MagicString } from 'vue/compiler-sfc'
 
@@ -17,11 +17,11 @@ const DEFINE_MODEL = 'defineModel'
  * Pre-transpile script setup block to remove type syntax and replace it with runtime declarations.
  * This function only performs minimal error checking, it means that it will preserve all errors that can be triggered at runtime
  */
-export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string): Promise<SFCScriptBlock> {
+export async function preTranspileScriptSetup(sfc: SFCDescriptor, id: string, options: SimpleTypeResolveOptions = {}): Promise<SFCScriptBlock> {
   if (!sfc.scriptSetup) {
     throw new Error('[vue-sfc-transformer] No script setup block found')
   }
-  const context = await prepareContext(sfc as SFCDescriptor & { scriptSetup: SFCScriptBlock }, id)
+  const context = await prepareContext(sfc as SFCDescriptor & { scriptSetup: SFCScriptBlock }, id, options)
   const resultBuilder = new MagicString(sfc.scriptSetup.content)
 
   for (const node of context.ctx.ast) {
@@ -250,7 +250,7 @@ function getDefineModelRuntimeDecl(node: CallExpression, context: Context): [Str
   return [undefined, arg0 as ObjectExpression | undefined]
 }
 
-async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string): Promise<Context> {
+async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptSetup: SFCScriptBlock }, id: string, options: SimpleTypeResolveOptions): Promise<Context> {
   const helpers = new Set<string>()
   const ast = babelParse(`${scriptSetup.content}\n${script?.content}`, {
     sourceType: 'module',
@@ -281,7 +281,7 @@ async function prepareContext({ script, scriptSetup }: SFCDescriptor & { scriptS
     propsDestructuredBindings: Object.create(null),
     emitsTypeDecl: undefined,
     isCE: false,
-    options: {},
+    options,
   } satisfies SimpleTypeResolveContext
 
   return {
