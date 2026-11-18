@@ -175,6 +175,11 @@ const id = '/project/src/runtime/Button.vue'
 const source = await readFile(id, 'utf8')
 
 const { code } = await transformVueSfc(source, id, { transform })
+
+const { files, diagnostics } = await emitVueDeclarations([{ id, source }], { cwd: '/project', tsconfig: 'tsconfig.json' })
+files.get('/project/src/runtime/Button.d.vue.ts')
+
+const fatal = diagnostics.filter(d => d.category === 'error' && isDeclarationEmitDiagnostic(d))
 ```
 
 `transformVueSfc` resolves the types of script setup macros such as `defineProps<Props>()` with `@vue/compiler-sfc`, which reads the nearest `tsconfig.json` to resolve `paths` aliases. Pass `script.fs` to serve that tsconfig from a virtual file system, falling back to `ts.sys` for everything else:
@@ -194,13 +199,6 @@ const { code } = await transformVueSfc(source, id, {
 ```
 
 `script.globalTypeFiles` adds fully resolved files to parse for global types. Both options mirror `@vue/compiler-sfc`'s `compileScript` options.
-
-```ts
-const { files, diagnostics } = await emitVueDeclarations([{ id, source }], { cwd: '/project', tsconfig: 'tsconfig.json' })
-files.get('/project/src/runtime/Button.d.vue.ts')
-
-const fatal = diagnostics.filter(d => d.category === 'error' && isDeclarationEmitDiagnostic(d))
-```
 
 To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. The session holds the parsed sources of its last call until it is garbage collected.
 
