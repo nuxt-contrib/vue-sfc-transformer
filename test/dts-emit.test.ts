@@ -729,6 +729,33 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     expect(isDeclarationEmitDiagnostic(byCode[2883]!)).toBe(true)
     expect([...result.files.keys()]).toEqual([join(root, 'src/semantic.d.ts')])
   })
+
+  it('only returns syntax and declaration emit errors without type checking', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('no-type-check', {
+      'node_modules/dep/package.json': JSON.stringify({ name: 'dep', types: 'index.d.ts' }),
+      'node_modules/dep/index.d.ts': `import type { Inner } from 'inner'\nexport declare function make(): Inner\n`,
+      'node_modules/dep/node_modules/inner/package.json': JSON.stringify({ name: 'inner', types: 'index.d.ts' }),
+      'node_modules/dep/node_modules/inner/index.d.ts': 'export interface Inner { value: string }\n',
+      'src/semantic.ts': `export const n: number = 'one'\n`,
+      'src/portability.ts': `import { make } from 'dep'\nexport const inner = make()\n`,
+      'src/Syntax.vue': `<script setup lang="ts">\nconst n = (1\n</script>\n<template><div /></template>\n`,
+    })
+    const emitted = sources.filter(source => source.id.includes('/src/'))
+    const store = new Map<string, string>()
+    const cache: DtsCache = {
+      getItem: async key => store.get(key),
+      setItem: async (key, value) => void store.set(key, value),
+    }
+
+    const unchecked = await emitVueDeclarations(emitted, { cwd: root, cache, typeCheck: false })
+    expect(unchecked.diagnostics.map(diagnostic => [diagnostic.code, diagnostic.kind])).toEqual([[2883, 'declaration'], [1005, 'syntactic']])
+    expect([...unchecked.files.keys()]).toEqual([join(root, 'src/semantic.d.ts'), join(root, 'src/Syntax.d.vue.ts')])
+    expect(unchecked.files.get(join(root, 'src/semantic.d.ts'))).toContain('n: number')
+
+    const semantic = emitted.filter(source => source.id.endsWith('semantic.ts'))
+    expect((await emitVueDeclarations(semantic, { cwd: root, cache, typeCheck: false })).diagnostics).toEqual([])
+    expect((await emitVueDeclarations(semantic, { cwd: root, cache })).diagnostics.map(diagnostic => diagnostic.code)).toEqual([2322])
+  })
 })
 
 describe('emitVueDeclarations (project tsconfig)', () => {

@@ -162,7 +162,7 @@ vueSfcPlugin({
 
 `vue-sfc-transformer/core` exports the pieces the rolldown plugin is built on, for tools that manage their own files and builds.
 
-`transformVueSfc` turns one SFC into its runtime form, and `emitVueDeclarations` emits declarations for a set of SFCs with the same options as the plugin (`cwd`, `tsconfig`, `paths`, `cache`, `cacheVersion`, `emitLegacyDeclarationAlias`). Diagnostics are returned rather than thrown, each with its `code`, `category`, `file`, `line` and `column`; `isDeclarationEmitDiagnostic` tells the ones that affect declarations from other type errors.
+`transformVueSfc` turns one SFC into its runtime form, and `emitVueDeclarations` emits declarations for a set of SFCs with the same options as the plugin (`cwd`, `tsconfig`, `paths`, `cache`, `cacheVersion`, `emitLegacyDeclarationAlias`). Diagnostics are returned rather than thrown, each with its `code`, `category`, `file`, `line` and `column`; `isDeclarationEmitDiagnostic` tells the ones that affect declarations from other type errors. With `typeCheck: false`, only syntax errors and declaration emit errors are reported, and with TypeScript 5.5 or later declarations are emitted without checking each source in full (`noCheck`), which is faster, although the members of some inferred types can then be printed in another order.
 
 `emitVueDeclarations` also accepts `.ts`, `.mts`, `.cts` and `.tsx` files, emitted in the same program as the SFCs so that `import type { Props } from './Foo.vue'` resolves to the component's types. They are returned as `foo.d.ts`, `foo.d.mts` and `foo.d.cts`. Declaration files (`.d.ts`) are added to the program without being emitted.
 
