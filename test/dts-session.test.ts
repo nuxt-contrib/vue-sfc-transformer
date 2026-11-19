@@ -11,7 +11,14 @@ describe('reuseSourceFiles', () => {
   function run(
     session = createVueDeclarationSession(),
     files: Record<string, string>,
-    { compilerOptions = options, typescript = ts, impliedNodeFormat = ts.ModuleKind.ESNext as ResolutionMode, shouldCreateNewSourceFile = false } = {},
+    {
+      compilerOptions = options,
+      typescript = ts,
+      languageVersion = ts.ScriptTarget.ESNext,
+      impliedNodeFormat = ts.ModuleKind.ESNext as ResolutionMode,
+      setExternalModuleIndicator = (file: SourceFile) => void ((file as { externalModuleIndicator?: unknown }).externalModuleIndicator = file.statements.find(ts.isExportDeclaration)),
+      shouldCreateNewSourceFile = false,
+    } = {},
   ): Record<string, SourceFile | undefined> {
     const reuse = reuseSourceFiles(session, typescript)
     const host = ts.createCompilerHost(compilerOptions)
@@ -19,7 +26,7 @@ describe('reuseSourceFiles', () => {
     reuse.wrap(host, compilerOptions)
     const sourceFiles = Object.fromEntries(Object.keys(files).map(fileName => [
       fileName,
-      host.getSourceFile(fileName, { languageVersion: ts.ScriptTarget.ESNext, impliedNodeFormat }, undefined, shouldCreateNewSourceFile),
+      host.getSourceFile(fileName, { languageVersion, impliedNodeFormat, setExternalModuleIndicator }, undefined, shouldCreateNewSourceFile),
     ]))
     reuse.commit()
     return sourceFiles
@@ -39,11 +46,53 @@ describe('reuseSourceFiles', () => {
     expect(run(undefined, files)['/a.ts']).not.toBe(run(undefined, files)['/a.ts'])
   })
 
-  it('does not reuse source files parsed with other compiler options', () => {
+  it('reuses source files parsed with options that do not affect parsing', () => {
     const session = createVueDeclarationSession()
     const files = { '/a.ts': 'export const a = 1\n' }
     const first = run(session, files)
-    expect(run(session, files, { compilerOptions: { ...options, strict: true } })['/a.ts']).not.toBe(first['/a.ts'])
+    const compilerOptions = { ...options, lib: ['lib.dom.d.ts'], types: ['node'], strictNullChecks: true, paths: { '#a': ['./a.ts'] } }
+    expect(run(session, files, { compilerOptions })['/a.ts']).toBe(first['/a.ts'])
+  })
+
+  it.each<[string, CompilerOptions]>([
+    ['alwaysStrict', { alwaysStrict: true }],
+    ['module', { module: ts.ModuleKind.Preserve }],
+    ['jsx', { jsx: ts.JsxEmit.ReactJSX }],
+    ['preserveConstEnums', { preserveConstEnums: true }],
+    ['isolatedModules', { isolatedModules: true }],
+  ])('does not reuse source files parsed with another `%s`', (_, compilerOptions) => {
+    const session = createVueDeclarationSession()
+    const files = { '/a.ts': 'export const a = 1\n' }
+    const first = run(session, files)
+    expect(run(session, files, { compilerOptions: { ...options, ...compilerOptions } })['/a.ts']).not.toBe(first['/a.ts'])
+  })
+
+  it('reuses declaration files parsed with options that only affect other files', () => {
+    const session = createVueDeclarationSession()
+    const files = { '/a.d.ts': 'export declare const a: 1\n', '/global.d.ts': 'declare const g: 1\n' }
+    const first = run(session, files)
+    const second = run(session, files, { compilerOptions: { ...options, module: ts.ModuleKind.Preserve, moduleDetection: ts.ModuleDetectionKind.Force, alwaysStrict: true, jsx: ts.JsxEmit.ReactJSX } })
+    expect(second['/a.d.ts']).toBe(first['/a.d.ts'])
+    expect(second['/global.d.ts']).toBe(first['/global.d.ts'])
+  })
+
+  it('does not reuse declaration files parsed for another target', () => {
+    const session = createVueDeclarationSession()
+    const files = { '/a.d.ts': 'export declare const a: 1\n' }
+    const first = run(session, files)
+    expect(run(session, files, { languageVersion: ts.ScriptTarget.ES2015 })['/a.d.ts']).not.toBe(first['/a.d.ts'])
+  })
+
+  it('does not reuse declaration files that would be bound as another kind of module', () => {
+    const session = createVueDeclarationSession()
+    const files = { '/global.d.ts': 'declare const g: 1\n' }
+    const first = run(session, files)
+    const second = run(session, files, {
+      compilerOptions: { ...options, moduleDetection: ts.ModuleDetectionKind.Force },
+      setExternalModuleIndicator: file => void ((file as { externalModuleIndicator?: unknown }).externalModuleIndicator = true),
+    })
+    expect(second['/global.d.ts']).not.toBe(first['/global.d.ts'])
+    expect(run(session, files)['/global.d.ts']).not.toBe(second['/global.d.ts'])
   })
 
   it('does not reuse source files parsed for another module format', () => {

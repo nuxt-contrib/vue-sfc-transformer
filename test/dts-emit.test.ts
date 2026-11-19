@@ -599,6 +599,34 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     expect(await countParses()).toBe(fresh)
   })
 
+  it('shares parsed declaration files between projects with a session', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-projects', {
+      'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './app' }, { path: './server' }] }),
+      'app/tsconfig.json': JSON.stringify({ compilerOptions: { module: 'preserve', moduleDetection: 'force', lib: ['esnext', 'dom'] }, include: ['.'] }),
+      'app/Size.vue': `<script lang="ts">\nexport const size = document.title\n</script>\n<template><div /></template>\n`,
+      'server/tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', lib: ['esnext'] }, include: ['.'] }),
+      'server/size.ts': `export const size = [1].at(0)\n`,
+    })
+    const emitted = sources.filter(source => !source.id.endsWith('.json'))
+    const { performance } = loadToolchain(root).ts as unknown as { performance: { enable: () => void, disable: () => void, getCount: (name: string) => number } }
+    const emit = async (session?: VueDeclarationSession) => {
+      performance.enable()
+      try {
+        const result = await emitVueDeclarations(emitted, { cwd: root, tsconfig: 'tsconfig.json', cache: false, session })
+        expect(result.diagnostics).toEqual([])
+        return { result, parses: performance.getCount('beforeParse') }
+      }
+      finally {
+        performance.disable()
+      }
+    }
+
+    const fresh = await emit()
+    const shared = await emit(createVueDeclarationSession())
+    expect(shared.result).toEqual(fresh.result)
+    expect(shared.parses).toBeLessThan(fresh.parses * 0.75)
+  })
+
   it('resolves `.vue` imports through `paths`', { timeout: 50_000 }, async () => {
     const { root, sources } = await writeFixture('paths', {
       'src/components/AvatarGroup.vue': avatarGroup,

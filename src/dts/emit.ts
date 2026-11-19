@@ -69,7 +69,8 @@ export interface EmitVueDeclarationsOptions {
   emitLegacyDeclarationAlias?: boolean
   /**
    * A session from `createVueDeclarationSession()`, to reuse the sources
-   * parsed by the previous call it was passed to.
+   * parsed by the previous call it was passed to, and to share the
+   * declaration files of libraries between the projects of one call.
    */
   session?: VueDeclarationSession
 }
