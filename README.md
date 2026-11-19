@@ -200,7 +200,7 @@ const { code } = await transformVueSfc(source, id, {
 
 `script.globalTypeFiles` adds fully resolved files to parse for global types. Both options mirror `@vue/compiler-sfc`'s `compileScript` options.
 
-To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. Within one call, the projects referenced by a tsconfig also share the declaration files they have in common (such as TypeScript's `lib` files and those of libraries), so a session also speeds up a single call with several projects. The session holds the parsed sources of its last call until it is garbage collected.
+To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. Within one call, the projects referenced by a tsconfig also share the declaration files they have in common (such as TypeScript's `lib` files and those of libraries), so a session also speeds up a single call with several projects. Each call also reuses the module resolutions of the previous one, unless a file was created where a module lookup failed or a `package.json` that module resolution read changed. The session holds the parsed sources and programs of its last call until it is garbage collected.
 
 ```ts
 import type { VueDeclarationSource } from 'vue-sfc-transformer/core'

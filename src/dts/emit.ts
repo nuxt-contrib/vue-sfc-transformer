@@ -12,7 +12,7 @@ import { isDeepStrictEqual } from 'node:util'
 
 import { join, normalize, resolve } from '../utils/path'
 import { CACHE_ENTRY_FORMAT, createFileSystemDtsCache, hashSfc, hashText, parseCacheEntry, parseCacheManifest } from './cache'
-import { collectProgramInputs } from './dependencies'
+import { collectProgramInputs, hasSameResolutions } from './dependencies'
 import { isDeclarationEmitDiagnostic, toDeclarationDiagnostic } from './diagnostics'
 import { resolveDeclarationProjects } from './project'
 import { reuseSourceFiles } from './session'
@@ -187,7 +187,7 @@ const runVueTsc: VueTscRunner = (files, options, sources, cached) => {
   const result: DeclarationRun = { files: new Map(), programDiagnostics: [] }
   for (const [project, group] of groups) {
     const roots = sources.filter(file => projectOf(file) === project)
-    const run = emitProjectDeclarations(toolchain, project, group, sources, roots, reuse, cached)
+    const run = emitProjectDeclarations(toolchain, options.rootDir, project, group, sources, roots, reuse, cached)
     for (const [id, file] of run.files) {
       result.files.set(id, file)
     }
@@ -200,8 +200,17 @@ const runVueTsc: VueTscRunner = (files, options, sources, cached) => {
       })
     }
   }
+  for (const project of projects) {
+    if (!groups.has(project)) {
+      reuse?.retainProgram(programKey(project))
+    }
+  }
   reuse?.commit()
   return result
+}
+
+function programKey(project: DeclarationProject): string {
+  return String(project.options.configFilePath ?? '')
 }
 
 interface ProjectRun {
@@ -212,6 +221,7 @@ interface ProjectRun {
 
 function emitProjectDeclarations(
   toolchain: Toolchain,
+  rootDir: string,
   project: DeclarationProject,
   files: VueDeclarationSource[],
   sources: VueDeclarationSource[],
@@ -246,7 +256,7 @@ function emitProjectDeclarations(
   }
   const originalFileExists = tsHost.fileExists.bind(tsHost)
   tsHost.fileExists = filename => vfs.has(normalize(filename)) || originalFileExists(filename)
-  reuse?.wrap(tsHost, compilerOptions)
+  const sourceFileKeys = reuse?.wrap(tsHost, compilerOptions)
 
   const rootNames = [...new Set([...project.fileNames, ...roots.map(f => normalize(f.id)).sort()])]
   let scripts: { delete: (id: string) => void } | undefined
@@ -270,10 +280,23 @@ function emitProjectDeclarations(
     }),
   )
 
-  const program = createProgram({ rootNames, options: compilerOptions, host: tsHost })
+  const key = programKey(project)
+  const previous = reuse?.previousProgram(key)
+  const oldProgram = previous && hasSameResolutions(previous.inputs, fileName => tsHost.fileExists(fileName), fileName => tsHost.readFile(fileName))
+    ? previous.program
+    : undefined
+  const createOptions: TypeScript.CreateProgramOptions = { rootNames, options: compilerOptions, host: tsHost, oldProgram }
+  const program = createProgram(createOptions)
+  // `@volar/typescript` keeps these options as long as the program, which
+  // would keep every earlier program reachable.
+  delete createOptions.oldProgram
   try {
-    const inputs = cached && collectProgramInputs(ts, program, fileName => tsHost.readFile(fileName))
-    return { ...emitProgramDeclarations(ts, program, files, vfs, inputs, cached), inputs }
+    const inputs = cached || reuse ? collectProgramInputs(ts, program, rootDir, fileName => tsHost.readFile(fileName)) : undefined
+    if (inputs) {
+      reuse?.keepProgram(key, { program, inputs, sourceFiles: sourceFileKeys! })
+    }
+    const tracked = cached && inputs
+    return { ...emitProgramDeclarations(ts, program, files, vfs, tracked, cached), inputs: tracked }
   }
   finally {
     // The virtual code of each SFC retains the program that created it.

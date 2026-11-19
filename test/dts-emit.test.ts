@@ -578,6 +578,45 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     expect(sourceSfc).toContain('sfcSize: "md"')
   })
 
+  it('resolves imports again with a session when a new file changes how they resolve', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-resolution', {
+      'size.ts': `import { size as base } from './sizes'\nexport const size = base\n`,
+      'sizes/index.ts': `export const size = 'sm' as const\n`,
+    })
+    const emitted = sources.filter(source => source.id.endsWith('/size.ts'))
+    const session = createVueDeclarationSession()
+    const emit = async () => {
+      const result = await emitVueDeclarations(emitted, { cwd: root, cache: false, session })
+      expect(result.diagnostics).toEqual([])
+      return result.files.get(join(root, 'size.d.ts'))
+    }
+
+    expect(await emit()).toContain('size: "sm"')
+    expect(await emit()).toContain('size: "sm"')
+    await writeFile(join(root, 'sizes.ts'), `export const size = 'lg' as const\n`)
+    expect(await emit()).toContain('size: "lg"')
+  })
+
+  it('resolves imports again with a session when a `package.json` they use changes', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-package-json', {
+      'package.json': JSON.stringify({ name: 'sizes', imports: { '#size': './sm.ts' } }),
+      'size.ts': `import { size as base } from '#size'\nexport const size = base\n`,
+      'sm.ts': `export const size = 'sm' as const\n`,
+      'lg.ts': `export const size = 'lg' as const\n`,
+    })
+    const emitted = sources.filter(source => source.id.endsWith('/size.ts'))
+    const session = createVueDeclarationSession()
+    const emit = async () => {
+      const result = await emitVueDeclarations(emitted, { cwd: root, cache: false, session })
+      expect(result.diagnostics).toEqual([])
+      return result.files.get(join(root, 'size.d.ts'))
+    }
+
+    expect(await emit()).toContain('size: "sm"')
+    await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'sizes', imports: { '#size': './lg.ts' } }))
+    expect(await emit()).toContain('size: "lg"')
+  })
+
   it('reuses parsed sources with a session', { timeout: 50_000 }, async () => {
     const { root, sources } = await writeFixture('session-parses', {
       'Size.vue': `<script lang="ts">\nimport { size } from './size'\nexport const sfcSize = size\n</script>\n<template><div /></template>\n`,
@@ -627,6 +666,37 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     const shared = await emit(createVueDeclarationSession())
     expect(shared.result).toEqual(fresh.result)
     expect(shared.parses).toBeLessThan(fresh.parses * 0.75)
+  })
+
+  it('keeps the sources of a project that a call with a session does not emit', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-retained-project', {
+      'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './app' }, { path: './server' }] }),
+      'app/tsconfig.json': JSON.stringify({ compilerOptions: { lib: ['esnext', 'dom'] }, include: ['.'] }),
+      'app/size.ts': `export const size = document.title\n`,
+      'server/tsconfig.json': JSON.stringify({ compilerOptions: { lib: ['esnext'] }, include: ['.'] }),
+      'server/size.ts': `export const size = [1].at(0)\n`,
+    })
+    const emitted = sources.filter(source => !source.id.endsWith('.json'))
+    const { performance } = loadToolchain(root).ts as unknown as { performance: { enable: () => void, disable: () => void, getCount: (name: string) => number } }
+    const emit = async (session: VueDeclarationSession, files = emitted) => {
+      performance.enable()
+      try {
+        expect((await emitVueDeclarations(files, { cwd: root, tsconfig: 'tsconfig.json', cache: false, session })).diagnostics).toEqual([])
+        return performance.getCount('beforeParse')
+      }
+      finally {
+        performance.disable()
+      }
+    }
+
+    const steady = createVueDeclarationSession()
+    await emit(steady)
+    const parses = await emit(steady)
+
+    const session = createVueDeclarationSession()
+    await emit(session)
+    await emit(session, emitted.filter(source => source.id.includes('/server/')))
+    expect(await emit(session)).toBe(parses)
   })
 
   it('resolves `.vue` imports through `paths`', { timeout: 50_000 }, async () => {

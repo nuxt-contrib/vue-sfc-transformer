@@ -1,5 +1,7 @@
 import type TypeScript from 'typescript'
 
+import { existsSync } from 'node:fs'
+
 import { dirname, isAbsolute, join, normalize } from '../utils/path'
 import { hashText } from './cache'
 
@@ -19,13 +21,15 @@ interface ProgramResolutions {
 export interface ProgramInputs {
   /**
    * Hashes of the files the program read that can change between builds,
-   * keyed by path: those outside `node_modules` (or reached other than as a
-   * package), and the `package.json` files outside `node_modules` that module
+   * keyed by path: those outside packages (or reached other than as a
+   * package), and the `package.json` files outside packages that module
    * resolution read.
    */
   files: Map<string, string>
+  /** The `package.json` files of `files`. */
+  affecting: Set<string>
   /**
-   * Paths outside `node_modules` that module resolution looked up and did not
+   * Paths outside packages that module resolution looked up and did not
    * find, where a new file would change how a module resolves.
    */
   absent: Set<string>
@@ -38,23 +42,31 @@ export interface ProgramInputs {
   dependenciesOf: (fileName: string) => string[]
 }
 
-const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
+const NODE_MODULES_RE = /[\\/]node_modules[\\/]/g
 const REFERENCE_EXTENSIONS = ['', '.ts', '.tsx', '.d.ts']
 
+/**
+ * Collects what a program read, for the project in `rootDir`. Paths in more
+ * `node_modules` directories than `rootDir` belong to packages.
+ */
 export function collectProgramInputs(
   ts: typeof TypeScript,
   program: TypeScript.Program,
+  rootDir: string,
   readFile: (fileName: string) => string | undefined,
 ): ProgramInputs {
   const resolutions = program as TypeScript.Program & ProgramResolutions
   const canResolve = typeof resolutions.forEachResolvedModule === 'function' && typeof resolutions.forEachResolvedTypeReferenceDirective === 'function'
   const preserveSymlinks = program.getCompilerOptions().preserveSymlinks
+  const depth = nodeModulesDepth(rootDir)
+  const inPackage = (path: string): boolean => nodeModulesDepth(path) > depth
   const isPackageFile = (sourceFile: TypeScript.SourceFile): boolean => {
     const fileName = preserveSymlinks ? ts.sys.realpath?.(sourceFile.fileName) ?? sourceFile.fileName : sourceFile.fileName
-    return NODE_MODULES_RE.test(fileName) && program.isSourceFileFromExternalLibrary(sourceFile)
+    return inPackage(fileName) && program.isSourceFileFromExternalLibrary(sourceFile)
   }
 
   const files = new Map<string, string>()
+  const affecting = new Set<string>()
   const absent = new Set<string>()
   const tracked = new Set<TypeScript.SourceFile>()
   const edges = new Map<TypeScript.SourceFile, Array<TypeScript.SourceFile | undefined>>()
@@ -62,12 +74,13 @@ export function collectProgramInputs(
 
   const addLookups = (resolution: Resolution): void => {
     for (const location of resolution.failedLookupLocations ?? []) {
-      if (!NODE_MODULES_RE.test(location)) {
+      if (!inPackage(location)) {
         absent.add(normalize(location))
       }
     }
     for (const location of resolution.affectingLocations ?? []) {
-      if (!NODE_MODULES_RE.test(location)) {
+      if (!inPackage(location) && !affecting.has(normalize(location))) {
+        affecting.add(normalize(location))
         files.set(normalize(location), hashText(readFile(location)))
       }
     }
@@ -131,6 +144,7 @@ export function collectProgramInputs(
   const global = union(globals)
   return {
     files,
+    affecting,
     absent,
     dependenciesOf(fileName) {
       const sourceFile = program.getSourceFile(fileName)
@@ -234,6 +248,33 @@ function reachableTrackedFiles(
     }
   }
   return reachable
+}
+
+/**
+ * Whether module resolution would give the same results as in the program
+ * `inputs` were collected from: no file was created where a lookup failed,
+ * and no `package.json` it read changed.
+ */
+export function hasSameResolutions(
+  inputs: ProgramInputs,
+  fileExists: (fileName: string) => boolean,
+  readFile: (fileName: string) => string | undefined,
+): boolean {
+  for (const path of inputs.absent) {
+    if (existsSync(path) || fileExists(path)) {
+      return false
+    }
+  }
+  for (const path of inputs.affecting) {
+    if (hashText(readFile(path)) !== inputs.files.get(path)) {
+      return false
+    }
+  }
+  return true
+}
+
+function nodeModulesDepth(path: string): number {
+  return `${path}/`.match(NODE_MODULES_RE)?.length ?? 0
 }
 
 // Whether a file declares anything outside its own module scope.

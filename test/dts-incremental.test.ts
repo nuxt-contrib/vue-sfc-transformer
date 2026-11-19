@@ -1,13 +1,14 @@
 import type { DtsCache, EmitVueDeclarationsOptions, EmitVueDeclarationsResult, VueDeclarationSource } from '../src/core'
 
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { emitVueDeclarations } from '../src/core'
 import { loadToolchain } from '../src/dts/toolchain'
+
+const dir = fileURLToPath(new URL('../node_modules/.tmp/dts-incremental', import.meta.url))
 
 const COMPONENTS = 12
 const COMPOSABLES = 6
@@ -74,13 +75,10 @@ function fixture(): Record<string, string> {
 }
 
 describe('emitVueDeclarations (incremental cache)', () => {
-  let dir: string
   let files: Record<string, string>
 
-  // Files under `node_modules` are treated as packages, which the cache does not track.
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'vue-sfc-transformer-'))
-    await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(dir, 'node_modules'))
+    await rm(dir, { force: true, recursive: true })
     files = fixture()
     for (const [path, source] of Object.entries(files)) {
       await mkdir(dirname(join(dir, path)), { recursive: true })
@@ -120,20 +118,20 @@ describe('emitVueDeclarations (incremental cache)', () => {
     await writeFile(join(dir, path), source)
   }
 
-  const options = (): EmitVueDeclarationsOptions => ({ cwd: dir, tsconfig: 'tsconfig.json', emitLegacyDeclarationAlias: true })
+  const options: EmitVueDeclarationsOptions = { cwd: dir, tsconfig: 'tsconfig.json', emitLegacyDeclarationAlias: true }
 
   let programs = 0
   let emits = 0
 
   async function expectSameAsUncached(check?: (result: EmitVueDeclarationsResult) => void): Promise<number> {
-    const uncached = await emitVueDeclarations(sources(), { ...options(), cache: false })
+    const uncached = await emitVueDeclarations(sources(), { ...options, cache: false })
     check?.(uncached)
     writes = 0
     const { performance } = loadToolchain(dir).ts as unknown as { performance: { enable: () => void, disable: () => void, getCount: (name: string) => number } }
     performance.enable()
     let result: EmitVueDeclarationsResult
     try {
-      result = await emitVueDeclarations(sources(), { ...options(), cache })
+      result = await emitVueDeclarations(sources(), { ...options, cache })
       programs = performance.getCount('beforeProgram')
       emits = performance.getCount('beforeEmit')
     }

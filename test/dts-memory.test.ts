@@ -72,7 +72,7 @@ describe('emitVueDeclarations (memory)', () => {
     const session = createVueDeclarationSession()
     await emit(sources, session)
     const before = await heapUsed()
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 8; i++) {
       await emit(sources.map(file => file === types ? { ...file, source: `${file.source}export const version = ${i}\n` } : file), session)
     }
     expect(await heapUsed() - before).toBeLessThan(30 * 1024 * 1024)
