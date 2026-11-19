@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createFileSystemDtsCache, createVueDeclarationSession, emitVueDeclarations, isDeclarationEmitDiagnostic } from '../src/core'
+import { hashText } from '../src/dts/cache'
 import { emitDeclarations } from '../src/dts/emit'
 import { loadToolchain } from '../src/dts/toolchain'
 
@@ -28,15 +29,16 @@ describe('emitVueDeclarations (caching)', () => {
   })
 
   function fakeRunner(map: Record<string, string> = {}, diagnostics: DeclarationDiagnostic[] = []): VueTscRunner {
-    return (files) => {
-      const declarations = new Map<string, string>()
-      const fileDiagnostics = new Map<string, DeclarationDiagnostic[]>()
-      for (const f of files) {
-        declarations.set(f.id, map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`)
-        fileDiagnostics.set(f.id, diagnostics.filter(diagnostic => diagnostic.file === f.id))
-      }
-      return { declarations, diagnostics: fileDiagnostics, programDiagnostics: diagnostics.filter(diagnostic => diagnostic.kind === 'options') }
-    }
+    return (files, _options, sources, cached) => ({
+      files: new Map(files.map(f => [f.id, {
+        dts: map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`,
+        diagnostics: diagnostics.filter(diagnostic => diagnostic.file === f.id),
+        dependencies: {},
+        cached: false,
+      }])),
+      programDiagnostics: diagnostics.filter(diagnostic => diagnostic.kind === 'options'),
+      inputs: cached && [{ ids: files.map(f => f.id), files: Object.fromEntries(sources.map(source => [source.id, hashText(source.source)])), absent: [] }],
+    })
   }
 
   function emitWith(files: VueDeclarationSource[], { runner, ...options }: EmitVueDeclarationsOptions & { runner: VueTscRunner }): Promise<EmitVueDeclarationsResult> {
@@ -136,14 +138,14 @@ describe('emitVueDeclarations (caching)', () => {
     const b = { id: '/b.vue', source: 'B' }
 
     await emitWith([a, b], { cwd: dir, cache, runner })
-    expect(store.size).toBe(2)
+    expect(store.size).toBe(3)
     store.delete([...store.keys()][1]!)
 
     runner.mockClear()
     const both = await emitWith([a, b], { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(runner.mock.calls[0]?.[0]).toHaveLength(1)
-    expect(runner.mock.calls[0]?.[2]).toEqual([a, b])
+    expect(runner.mock.calls[0]?.[0]).toEqual([a, b])
+    expect([...runner.mock.calls[0]![3]!.keys()]).toEqual([a.id])
     expect(both.files.size).toBe(2)
   })
 
@@ -252,7 +254,7 @@ describe('emitVueDeclarations (caching)', () => {
     const first = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
     expect(dtsOf(first, '/u.vue')).toBe('declare const U: 1\n')
-    expect(store.size).toBe(1)
+    expect(store.size).toBe(2)
 
     const second = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
@@ -364,9 +366,9 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     const uncached = await emitVueDeclarations(files, { cwd: root, cache: false })
     expect(uncached.diagnostics.map(diagnostic => diagnostic.code)).toEqual([2322, 2322])
     expect(await emitVueDeclarations(files, { cwd: root, cache })).toEqual(uncached)
-    expect(cache.setItem).toHaveBeenCalledTimes(3)
+    expect(cache.setItem).toHaveBeenCalledTimes(4)
     expect(await emitVueDeclarations(files, { cwd: root, cache })).toEqual(uncached)
-    expect(cache.setItem).toHaveBeenCalledTimes(3)
+    expect(cache.setItem).toHaveBeenCalledTimes(4)
   })
 
   it('ignores errors in files other than the emitted SFCs', { timeout: 50_000 }, async () => {

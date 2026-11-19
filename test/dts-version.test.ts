@@ -39,6 +39,16 @@ describe('getAutoCacheVersion', () => {
     expect(strict).not.toBe(loose)
   })
 
+  it('changes with the files of the tsconfig', async () => {
+    const tsconfig = join(dir, 'tsconfig.json')
+    await writeFile(tsconfig, JSON.stringify({ files: [] }))
+    const none = getAutoCacheVersion({ rootDir: dir, tsconfig })
+    clearAutoCacheVersionMemo()
+    await writeFile(join(dir, 'ambient.d.ts'), 'declare const ambient: 1\n')
+    await writeFile(tsconfig, JSON.stringify({ files: ['ambient.d.ts'] }))
+    expect(getAutoCacheVersion({ rootDir: dir, tsconfig })).not.toBe(none)
+  })
+
   it('changes with `paths`', () => {
     const a = getAutoCacheVersion({ rootDir: dir, paths: { 'my-module': [join(dir, 'a.ts')] } })
     const b = getAutoCacheVersion({ rootDir: dir, paths: { 'my-module': [join(dir, 'b.ts')] } })

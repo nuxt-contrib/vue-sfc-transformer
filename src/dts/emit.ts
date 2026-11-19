@@ -1,14 +1,18 @@
 import type TypeScript from 'typescript'
-import type { DtsCache } from './cache'
+import type { DtsCache, DtsCacheEntry, DtsCacheManifest, DtsCacheProgramInputs } from './cache'
+import type { ProgramInputs } from './dependencies'
 import type { DeclarationDiagnostic } from './diagnostics'
 import type { DeclarationProject } from './project'
 import type { SourceFileReuse, VueDeclarationSession } from './session'
 import type { Toolchain } from './toolchain'
 
+import { access, readFile } from 'node:fs/promises'
 import process from 'node:process'
+import { isDeepStrictEqual } from 'node:util'
 
 import { join, normalize, resolve } from '../utils/path'
-import { CACHE_ENTRY_FORMAT, createFileSystemDtsCache, hashSfc, hashSources, parseCacheEntry, serializeCacheEntry } from './cache'
+import { CACHE_ENTRY_FORMAT, createFileSystemDtsCache, hashSfc, hashText, parseCacheEntry, parseCacheManifest } from './cache'
+import { collectProgramInputs } from './dependencies'
 import { isDeclarationEmitDiagnostic, toDeclarationDiagnostic } from './diagnostics'
 import { resolveDeclarationProjects } from './project'
 import { reuseSourceFiles } from './session'
@@ -49,11 +53,14 @@ export interface EmitVueDeclarationsOptions {
    * Content-hash cache for emitted declarations. Defaults to a disk cache
    * under `<cwd>/node_modules/.cache/vue-sfc-dts/`; pass a custom `DtsCache`
    * for in-memory / Redis / etc., or `false` to disable caching entirely.
-   * Keys cover every source passed in, so changing one re-emits them all.
    * Each declaration is cached with the diagnostics of its source, which are
-   * returned again on a hit. Nothing is cached from a run with errors that
-   * affect declarations or with program option errors, so they are reported
-   * again on the next run.
+   * returned again on a hit, and is reused while its source and the files it
+   * depends on are unchanged: those it imports and those visible to every
+   * source, compared by their declarations when emitted in the same call and
+   * by their text otherwise. Files that TypeScript loads from packages in
+   * `node_modules` are not compared. Nothing is cached from a run with errors
+   * that affect declarations or with program option errors, so they are
+   * reported again on the next run.
    */
   cache?: DtsCache | false
   /**
@@ -99,20 +106,32 @@ interface ResolvedEmitOptions {
   session?: VueDeclarationSession
 }
 
-interface DeclarationRun {
-  declarations: Map<string, string>
-  /** Diagnostics reported while checking and emitting each file, keyed by its id. */
-  diagnostics: Map<string, DeclarationDiagnostic[]>
-  /** Program option and global diagnostics. */
-  programDiagnostics: DeclarationDiagnostic[]
+interface FileRun {
+  dts?: string
+  /** Diagnostics reported while checking and emitting the file. */
+  diagnostics: DeclarationDiagnostic[]
+  /** What the result depends on, as cached; unset when it cannot be cached. */
+  dependencies?: Record<string, string>
+  /** Whether the result is the cached one passed to the runner. */
+  cached: boolean
 }
 
-// `files` are emitted; `sources` also includes cache hits and declaration
-// files, which emitted files may import.
+interface DeclarationRun {
+  files: Map<string, FileRun>
+  /** Program option and global diagnostics. */
+  programDiagnostics: DeclarationDiagnostic[]
+  /** What the programs read, when the results can be cached. */
+  inputs?: DtsCacheProgramInputs[]
+}
+
+// `files` are emitted, apart from those whose `cached` entry is still
+// current; `sources` also includes declaration files, which emitted files may
+// import. Without `cached`, results are not cached.
 export type VueTscRunner = (
   files: VueDeclarationSource[],
   options: ResolvedEmitOptions,
   sources: VueDeclarationSource[],
+  cached: Map<string, DtsCacheEntry> | undefined,
 ) => DeclarationRun | Promise<DeclarationRun>
 
 // Declarations are read back from next to each source file, and errors in
@@ -150,7 +169,7 @@ function declarationPath(id: string): string {
     : id.replace(/\.([^./]+)$/, '.d.$1.ts')
 }
 
-const runVueTsc: VueTscRunner = (files, options, sources) => {
+const runVueTsc: VueTscRunner = (files, options, sources, cached) => {
   const toolchain = loadToolchain(options.rootDir)
   const projects = resolveDeclarationProjects(toolchain, options.rootDir, options.tsconfig, options.paths)
   const projectFileNames = projects.map(project => new Set(project.fileNames))
@@ -165,20 +184,30 @@ const runVueTsc: VueTscRunner = (files, options, sources) => {
   }
 
   const reuse = options.session && reuseSourceFiles(options.session, toolchain.ts)
-  const result: DeclarationRun = { declarations: new Map(), diagnostics: new Map(), programDiagnostics: [] }
+  const result: DeclarationRun = { files: new Map(), programDiagnostics: [] }
   for (const [project, group] of groups) {
     const roots = sources.filter(file => projectOf(file) === project)
-    const run = emitProjectDeclarations(toolchain, project, group, sources, roots, reuse)
-    for (const [id, dts] of run.declarations) {
-      result.declarations.set(id, dts)
-    }
-    for (const [id, diagnostics] of run.diagnostics) {
-      result.diagnostics.set(id, diagnostics)
+    const run = emitProjectDeclarations(toolchain, project, group, sources, roots, reuse, cached)
+    for (const [id, file] of run.files) {
+      result.files.set(id, file)
     }
     result.programDiagnostics.push(...run.programDiagnostics)
+    if (run.inputs) {
+      (result.inputs ??= []).push({
+        ids: group.map(file => file.id),
+        files: Object.fromEntries(run.inputs.files),
+        absent: [...run.inputs.absent].sort(),
+      })
+    }
   }
   reuse?.commit()
   return result
+}
+
+interface ProjectRun {
+  files: Map<string, FileRun>
+  programDiagnostics: DeclarationDiagnostic[]
+  inputs?: ProgramInputs
 }
 
 function emitProjectDeclarations(
@@ -188,7 +217,8 @@ function emitProjectDeclarations(
   sources: VueDeclarationSource[],
   roots: VueDeclarationSource[],
   reuse: SourceFileReuse | undefined,
-): DeclarationRun {
+  cached: Map<string, DtsCacheEntry> | undefined,
+): ProjectRun {
   const { ts, volarTs, vueLanguageCore } = toolchain
   const vfs = new Map<string, string>()
   for (const file of sources) {
@@ -242,7 +272,8 @@ function emitProjectDeclarations(
 
   const program = createProgram({ rootNames, options: compilerOptions, host: tsHost })
   try {
-    return emitProgramDeclarations(ts, program, files, vfs)
+    const inputs = cached && collectProgramInputs(ts, program, fileName => tsHost.readFile(fileName))
+    return { ...emitProgramDeclarations(ts, program, files, vfs, inputs, cached), inputs }
   }
   finally {
     // The virtual code of each SFC retains the program that created it.
@@ -261,45 +292,113 @@ function emitProgramDeclarations(
   program: TypeScript.Program,
   files: VueDeclarationSource[],
   vfs: Map<string, string>,
-): DeclarationRun {
-  const diagnostics = new Map<string, DeclarationDiagnostic[]>()
+  inputs: ProgramInputs | undefined,
+  cached: Map<string, DtsCacheEntry> | undefined,
+): Omit<ProjectRun, 'inputs'> {
+  const results = new Map<string, FileRun>()
   const programDiagnostics: DeclarationDiagnostic[] = []
   let emitSkipped = false
-  const emitted = new Map(files.map(file => [normalize(file.id), file.id]))
+  const byPath = new Map(files.map(file => [normalize(file.id), file]))
+  const sourceFiles = new Map<VueDeclarationSource, TypeScript.SourceFile>()
   for (const sourceFile of program.getSourceFiles()) {
-    const id = emitted.get(normalize(sourceFile.fileName))
-    if (id === undefined) {
-      continue
+    const file = byPath.get(normalize(sourceFile.fileName))
+    if (file) {
+      sourceFiles.set(file, sourceFile)
     }
-    const fileDiagnostics: DeclarationDiagnostic[] = []
-    diagnostics.set(id, fileDiagnostics)
+  }
+  const ordered = [...sourceFiles.keys()]
+
+  const emit = (file: VueDeclarationSource): void => {
+    const sourceFile = sourceFiles.get(file)!
+    const diagnostics: DeclarationDiagnostic[] = []
     for (const diagnostic of program.getSyntacticDiagnostics(sourceFile)) {
-      fileDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'syntactic'))
+      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'syntactic'))
     }
     for (const diagnostic of program.getSemanticDiagnostics(sourceFile)) {
-      fileDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'semantic'))
+      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'semantic'))
     }
     const emitResult = program.emit(sourceFile)
     emitSkipped ||= emitResult.emitSkipped
     for (const diagnostic of emitResult.diagnostics) {
-      fileDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'declaration'))
+      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'declaration'))
+    }
+    // vue-tsc writes `<path>.vue.d.ts` for SFC inputs
+    const dts = vfs.get(normalize(isScriptFile(file.id) ? declarationPath(file.id) : `${file.id}.d.ts`))
+    results.set(file.id, { dts, diagnostics, cached: false })
+  }
+
+  if (!inputs) {
+    ordered.forEach(emit)
+  }
+  else {
+    const dependencies = new Map(ordered.map(file => [file.id, inputs.dependenciesOf(normalize(file.id))]))
+    const current = new Map<string, DtsCacheEntry>()
+    for (const file of ordered) {
+      const entry = cached?.get(file.id)
+      const paths = dependencies.get(file.id)!
+      if (
+        entry
+        && Object.keys(entry.dependencies).length === paths.length
+        && paths.every(path => byPath.has(path) ? path in entry.dependencies : entry.dependencies[path] === inputs.files.get(path))
+      ) {
+        current.set(file.id, entry)
+      }
+    }
+
+    // How TypeScript prints an inferred type can depend on the files checked
+    // before it, so files are always emitted in program order, from the
+    // first one up to the last one whose entry cannot be reused. An entry is
+    // reused while the declarations it was emitted against are unchanged.
+    const signature = (path: string): string | undefined => {
+      const { id } = byPath.get(path)!
+      return results.has(id) ? hashText(results.get(id)!.dts) : current.has(id) ? hashText(current.get(id)!.dts) : undefined
+    }
+    const isStale = (file: VueDeclarationSource, entry: DtsCacheEntry): boolean => dependencies.get(file.id)!.some((path) => {
+      const hash = byPath.has(path) ? signature(path) : undefined
+      return hash !== undefined && entry.dependencies[path] !== hash
+    })
+    let next = 0
+    for (;;) {
+      for (const file of ordered.slice(next)) {
+        const entry = current.get(file.id)
+        if (entry && isStale(file, entry)) {
+          current.delete(file.id)
+        }
+      }
+      let last = ordered.length - 1
+      while (last >= next && current.has(ordered[last]!.id)) {
+        last--
+      }
+      if (last < next) {
+        break
+      }
+      for (; next <= last; next++) {
+        emit(ordered[next]!)
+      }
+    }
+
+    for (const file of ordered) {
+      const entry = current.get(file.id)
+      const result = results.get(file.id)
+      if (!result) {
+        results.set(file.id, { ...entry!, cached: true })
+        continue
+      }
+      const paths = dependencies.get(file.id)!
+      const known = new Set([normalize(file.id), ...paths])
+      if (result.diagnostics.every(diagnostic => diagnostic.file === undefined || known.has(normalize(diagnostic.file)))) {
+        result.dependencies = Object.fromEntries(paths.map(path => [path, (byPath.has(path) ? signature(path) : inputs.files.get(path))!]))
+      }
+      result.cached = !!entry && result.dts === entry.dts && isDeepStrictEqual(result.diagnostics, entry.diagnostics) && isDeepStrictEqual(result.dependencies, entry.dependencies)
     }
   }
-  if (emitSkipped && ![...diagnostics.values()].some(list => list.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic)))) {
+
+  if (emitSkipped && ![...results.values()].some(({ diagnostics }) => diagnostics.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic)))) {
     for (const diagnostic of [...program.getOptionsDiagnostics(), ...program.getGlobalDiagnostics()]) {
       programDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'options'))
     }
   }
-
-  const declarations = new Map<string, string>()
-  for (const file of files) {
-    // vue-tsc writes `<path>.vue.d.ts` for SFC inputs
-    const contents = vfs.get(normalize(isScriptFile(file.id) ? declarationPath(file.id) : `${file.id}.d.ts`))
-    if (contents !== undefined) {
-      declarations.set(file.id, contents)
-    }
-  }
-  return { declarations, diagnostics, programDiagnostics }
+  return { files: results, programDiagnostics }
 }
 
 /**
@@ -342,52 +441,15 @@ export async function emitDeclarations(
     session: options.session,
   }
 
-  const entries = new Map<string, { dts?: string, diagnostics: DeclarationDiagnostic[] }>()
   const cache = options.cache === false
     ? undefined
     : options.cache || createFileSystemDtsCache({ dir: join(rootDir, 'node_modules/.cache/vue-sfc-dts') })
-  const version = cache
-    ? [getAutoCacheVersion(resolved), options.cacheVersion, `entry=${CACHE_ENTRY_FORMAT}`, `sources=${hashSources(files)}`].filter(Boolean).join('|')
-    : ''
-
-  const keys = new Map<string, string>()
-  if (cache) {
-    await Promise.all(emitted.map(async (file) => {
-      const key = hashSfc(file.id, file.source, version)
-      keys.set(file.id, key)
-      const hit = await cache.getItem(key)
-      // Both `null` (unstorage convention) and `undefined` count as misses.
-      const entry = hit == null ? undefined : parseCacheEntry(hit)
-      if (entry) {
-        entries.set(file.id, entry)
-      }
-    }))
-  }
-  const misses = emitted.filter(file => !entries.has(file.id))
-
-  let programDiagnostics: DeclarationDiagnostic[] = []
-  if (misses.length) {
-    const run = await runner(misses, resolved, files)
-    programDiagnostics = run.programDiagnostics
-    for (const file of misses) {
-      entries.set(file.id, { dts: run.declarations.get(file.id), diagnostics: run.diagnostics.get(file.id) ?? [] })
-    }
-
-    const cacheable = programDiagnostics.length === 0 && ![...run.diagnostics.values()].some(diagnostics =>
-      diagnostics.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic)))
-    if (cache && cacheable) {
-      await Promise.all(misses.map(async (file) => {
-        const { dts, diagnostics } = entries.get(file.id)!
-        const key = keys.get(file.id)
-        if (dts !== undefined && key !== undefined) {
-          await cache.setItem(key, serializeCacheEntry({ dts, diagnostics }))
-        }
-      }))
-    }
-  }
+  const run = cache
+    ? await emitCachedDeclarations(emitted, files, resolved, options.cacheVersion, cache, runner)
+    : await runner(emitted, resolved, files, undefined)
 
   for (const file of emitted) {
-    const { dts, diagnostics } = entries.get(file.id)!
+    const { dts, diagnostics = [] } = run.files.get(file.id) ?? {}
     result.diagnostics.push(...diagnostics)
     if (dts === undefined) {
       continue
@@ -397,6 +459,88 @@ export async function emitDeclarations(
       result.files.set(`${file.id}.d.ts`, dts)
     }
   }
-  result.diagnostics.push(...programDiagnostics)
+  result.diagnostics.push(...run.programDiagnostics)
   return result
+}
+
+// Each entry is keyed by the source and id of its file, and holds what its
+// declaration was emitted against, which a program checks before reusing it.
+// A manifest keyed by the ids of all files records what the program of each
+// project read in the last call, so that the entries of a project are reused
+// without a program when none of that changed.
+async function emitCachedDeclarations(
+  emitted: VueDeclarationSource[],
+  sources: VueDeclarationSource[],
+  resolved: ResolvedEmitOptions,
+  cacheVersion: string | undefined,
+  cache: DtsCache,
+  runner: VueTscRunner,
+): Promise<DeclarationRun> {
+  const version = [getAutoCacheVersion(resolved), cacheVersion, `entry=${CACHE_ENTRY_FORMAT}`].filter(Boolean).join('|')
+  const keys = new Map(emitted.map(file => [file.id, hashSfc(file.id, file.source, version)]))
+  const manifestKey = hashSfc('manifest', sources.map(file => file.id).sort().join('\0'), version)
+  // Both `null` (unstorage convention) and `undefined` count as misses.
+  const [manifestValue, ...values] = await Promise.all([manifestKey, ...keys.values()].map(key => cache.getItem(key)))
+  const cached = new Map<string, DtsCacheEntry>()
+  const hashes = new Map<string, string>()
+  emitted.forEach((file, index) => {
+    const value = values[index]
+    const entry = value == null ? undefined : parseCacheEntry(value)
+    if (entry) {
+      cached.set(file.id, entry)
+      hashes.set(file.id, hashText(value!))
+    }
+  })
+
+  const manifest = manifestValue == null ? undefined : parseCacheManifest(manifestValue)
+  const texts = new Map(sources.map(file => [normalize(file.id), file.source]))
+  const programs = manifest
+    ? (await Promise.all(manifest.programs.map(async program => await isProgramCurrent(program, manifest, hashes, texts) && program))).filter(program => program !== false)
+    : []
+  const current = new Set(programs.flatMap(program => program.ids))
+  const remaining = emitted.filter(file => !current.has(file.id))
+  const run: DeclarationRun = remaining.length
+    ? await runner(remaining, resolved, sources, cached)
+    : { files: new Map(), programDiagnostics: [], inputs: [] }
+  for (const id of current) {
+    run.files.set(id, { ...cached.get(id)!, cached: true })
+  }
+
+  const cacheable = run.programDiagnostics.length === 0 && ![...run.files.values()].some(({ diagnostics }) =>
+    diagnostics.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic)))
+  if (!cacheable) {
+    return run
+  }
+
+  await Promise.all(remaining.map(async (file) => {
+    const result = run.files.get(file.id)
+    if (!result || result.cached || result.dts === undefined || !result.dependencies) {
+      return
+    }
+    const value = JSON.stringify({ dts: result.dts, diagnostics: result.diagnostics, dependencies: result.dependencies } satisfies DtsCacheEntry)
+    hashes.set(file.id, hashText(value))
+    await cache.setItem(keys.get(file.id)!, value)
+  }))
+  if (run.inputs && remaining.length && emitted.every(file => run.files.get(file.id)?.dependencies && hashes.has(file.id))) {
+    const entries = Object.fromEntries(emitted.map(file => [file.id, hashes.get(file.id)!]))
+    await cache.setItem(manifestKey, JSON.stringify({ entries, programs: [...programs, ...run.inputs] } satisfies DtsCacheManifest))
+  }
+  return run
+}
+
+async function isProgramCurrent(
+  program: DtsCacheProgramInputs,
+  manifest: DtsCacheManifest,
+  hashes: Map<string, string>,
+  texts: Map<string, string>,
+): Promise<boolean> {
+  if (program.ids.some(id => !hashes.has(id) || manifest.entries[id] !== hashes.get(id))) {
+    return false
+  }
+  const checks = await Promise.all([
+    ...Object.entries(program.files).map(async ([path, hash]) =>
+      hashText(texts.has(path) ? texts.get(path) : await readFile(path, 'utf8').catch(() => undefined)) === hash),
+    ...program.absent.map(path => access(path).then(() => false, () => true)),
+  ])
+  return checks.every(Boolean)
 }
