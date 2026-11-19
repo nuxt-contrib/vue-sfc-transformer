@@ -141,7 +141,7 @@ vueSfcPlugin({
 })
 ```
 
-Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved compiler options and `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely.
+Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved compiler options and `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely. Type errors that leave declarations intact are cached with them and reported again on a hit; a build with errors that affect declarations is not cached.
 
 Pass `cache: false` to disable. Pass `cacheVersion: '<your-string>'` to namespace the cache under your control on top of the auto-derivation.
 

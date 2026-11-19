@@ -8,7 +8,7 @@ import type { Toolchain } from './toolchain'
 import process from 'node:process'
 
 import { join, normalize, resolve } from '../utils/path'
-import { createFileSystemDtsCache, hashSfc, hashSources } from './cache'
+import { CACHE_ENTRY_FORMAT, createFileSystemDtsCache, hashSfc, hashSources, parseCacheEntry, serializeCacheEntry } from './cache'
 import { isDeclarationEmitDiagnostic, toDeclarationDiagnostic } from './diagnostics'
 import { resolveDeclarationProjects } from './project'
 import { reuseSourceFiles } from './session'
@@ -50,8 +50,10 @@ export interface EmitVueDeclarationsOptions {
    * under `<cwd>/node_modules/.cache/vue-sfc-dts/`; pass a custom `DtsCache`
    * for in-memory / Redis / etc., or `false` to disable caching entirely.
    * Keys cover every source passed in, so changing one re-emits them all.
-   * Nothing is cached from a run with errors, so they are reported again on
-   * the next run.
+   * Each declaration is cached with the diagnostics of its source, which are
+   * returned again on a hit. Nothing is cached from a run with errors that
+   * affect declarations or with program option errors, so they are reported
+   * again on the next run.
    */
   cache?: DtsCache | false
   /**
@@ -98,7 +100,10 @@ interface ResolvedEmitOptions {
 
 interface DeclarationRun {
   declarations: Map<string, string>
-  diagnostics: DeclarationDiagnostic[]
+  /** Diagnostics reported while checking and emitting each file, keyed by its id. */
+  diagnostics: Map<string, DeclarationDiagnostic[]>
+  /** Program option and global diagnostics. */
+  programDiagnostics: DeclarationDiagnostic[]
 }
 
 // `files` are emitted; `sources` also includes cache hits and declaration
@@ -159,18 +164,20 @@ const runVueTsc: VueTscRunner = (files, options, sources) => {
   }
 
   const reuse = options.session && reuseSourceFiles(options.session, toolchain.ts)
-  const declarations = new Map<string, string>()
-  const diagnostics: DeclarationDiagnostic[] = []
+  const result: DeclarationRun = { declarations: new Map(), diagnostics: new Map(), programDiagnostics: [] }
   for (const [project, group] of groups) {
     const roots = sources.filter(file => projectOf(file) === project)
     const run = emitProjectDeclarations(toolchain, project, group, sources, roots, reuse)
     for (const [id, dts] of run.declarations) {
-      declarations.set(id, dts)
+      result.declarations.set(id, dts)
     }
-    diagnostics.push(...run.diagnostics)
+    for (const [id, diagnostics] of run.diagnostics) {
+      result.diagnostics.set(id, diagnostics)
+    }
+    result.programDiagnostics.push(...run.programDiagnostics)
   }
   reuse?.commit()
-  return { declarations, diagnostics }
+  return result
 }
 
 function emitProjectDeclarations(
@@ -254,28 +261,32 @@ function emitProgramDeclarations(
   files: VueDeclarationSource[],
   vfs: Map<string, string>,
 ): DeclarationRun {
-  const diagnostics: DeclarationDiagnostic[] = []
+  const diagnostics = new Map<string, DeclarationDiagnostic[]>()
+  const programDiagnostics: DeclarationDiagnostic[] = []
   let emitSkipped = false
-  const emitted = new Set(files.map(file => normalize(file.id)))
+  const emitted = new Map(files.map(file => [normalize(file.id), file.id]))
   for (const sourceFile of program.getSourceFiles()) {
-    if (!emitted.has(normalize(sourceFile.fileName))) {
+    const id = emitted.get(normalize(sourceFile.fileName))
+    if (id === undefined) {
       continue
     }
+    const fileDiagnostics: DeclarationDiagnostic[] = []
+    diagnostics.set(id, fileDiagnostics)
     for (const diagnostic of program.getSyntacticDiagnostics(sourceFile)) {
-      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'syntactic'))
+      fileDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'syntactic'))
     }
     for (const diagnostic of program.getSemanticDiagnostics(sourceFile)) {
-      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'semantic'))
+      fileDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'semantic'))
     }
     const emitResult = program.emit(sourceFile)
     emitSkipped ||= emitResult.emitSkipped
     for (const diagnostic of emitResult.diagnostics) {
-      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'declaration'))
+      fileDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'declaration'))
     }
   }
-  if (emitSkipped && !diagnostics.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic))) {
+  if (emitSkipped && ![...diagnostics.values()].some(list => list.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic)))) {
     for (const diagnostic of [...program.getOptionsDiagnostics(), ...program.getGlobalDiagnostics()]) {
-      diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'options'))
+      programDiagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'options'))
     }
   }
 
@@ -287,7 +298,7 @@ function emitProgramDeclarations(
       declarations.set(file.id, contents)
     }
   }
-  return { declarations, diagnostics }
+  return { declarations, diagnostics, programDiagnostics }
 }
 
 /**
@@ -330,12 +341,12 @@ export async function emitDeclarations(
     session: options.session,
   }
 
-  const declarations = new Map<string, string>()
+  const entries = new Map<string, { dts?: string, diagnostics: DeclarationDiagnostic[] }>()
   const cache = options.cache === false
     ? undefined
     : options.cache || createFileSystemDtsCache({ dir: join(rootDir, 'node_modules/.cache/vue-sfc-dts') })
   const version = cache
-    ? [getAutoCacheVersion(resolved), options.cacheVersion, `sources=${hashSources(files)}`].filter(Boolean).join('|')
+    ? [getAutoCacheVersion(resolved), options.cacheVersion, `entry=${CACHE_ENTRY_FORMAT}`, `sources=${hashSources(files)}`].filter(Boolean).join('|')
     : ''
 
   const keys = new Map<string, string>()
@@ -345,33 +356,38 @@ export async function emitDeclarations(
       keys.set(file.id, key)
       const hit = await cache.getItem(key)
       // Both `null` (unstorage convention) and `undefined` count as misses.
-      if (hit != null) {
-        declarations.set(file.id, hit)
+      const entry = hit == null ? undefined : parseCacheEntry(hit)
+      if (entry) {
+        entries.set(file.id, entry)
       }
     }))
   }
-  const misses = emitted.filter(file => !declarations.has(file.id))
+  const misses = emitted.filter(file => !entries.has(file.id))
 
+  let programDiagnostics: DeclarationDiagnostic[] = []
   if (misses.length) {
     const run = await runner(misses, resolved, files)
-    result.diagnostics = run.diagnostics
-    for (const [id, dts] of run.declarations) {
-      declarations.set(id, dts)
+    programDiagnostics = run.programDiagnostics
+    for (const file of misses) {
+      entries.set(file.id, { dts: run.declarations.get(file.id), diagnostics: run.diagnostics.get(file.id) ?? [] })
     }
 
-    if (cache && !run.diagnostics.some(diagnostic => diagnostic.category === 'error')) {
+    const cacheable = programDiagnostics.length === 0 && ![...run.diagnostics.values()].some(diagnostics =>
+      diagnostics.some(diagnostic => diagnostic.category === 'error' && isDeclarationEmitDiagnostic(diagnostic)))
+    if (cache && cacheable) {
       await Promise.all(misses.map(async (file) => {
-        const dts = run.declarations.get(file.id)
+        const { dts, diagnostics } = entries.get(file.id)!
         const key = keys.get(file.id)
         if (dts !== undefined && key !== undefined) {
-          await cache.setItem(key, dts)
+          await cache.setItem(key, serializeCacheEntry({ dts, diagnostics }))
         }
       }))
     }
   }
 
   for (const file of emitted) {
-    const dts = declarations.get(file.id)
+    const { dts, diagnostics } = entries.get(file.id)!
+    result.diagnostics.push(...diagnostics)
     if (dts === undefined) {
       continue
     }
@@ -380,5 +396,6 @@ export async function emitDeclarations(
       result.files.set(`${file.id}.d.ts`, dts)
     }
   }
+  result.diagnostics.push(...programDiagnostics)
   return result
 }

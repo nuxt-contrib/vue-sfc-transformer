@@ -30,10 +30,12 @@ describe('emitVueDeclarations (caching)', () => {
   function fakeRunner(map: Record<string, string> = {}, diagnostics: DeclarationDiagnostic[] = []): VueTscRunner {
     return (files) => {
       const declarations = new Map<string, string>()
+      const fileDiagnostics = new Map<string, DeclarationDiagnostic[]>()
       for (const f of files) {
         declarations.set(f.id, map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`)
+        fileDiagnostics.set(f.id, diagnostics.filter(diagnostic => diagnostic.file === f.id))
       }
-      return { declarations, diagnostics }
+      return { declarations, diagnostics: fileDiagnostics, programDiagnostics: diagnostics.filter(diagnostic => diagnostic.kind === 'options') }
     }
   }
 
@@ -165,9 +167,31 @@ describe('emitVueDeclarations (caching)', () => {
     expect(runner.mock.calls[0]?.[0]).toHaveLength(2)
   })
 
-  it('does not cache declarations from a run with errors', async () => {
-    const cache = createFileSystemDtsCache({ dir: join(dir, 'errors') })
-    const diagnostic: DeclarationDiagnostic = { code: 2322, category: 'error', kind: 'semantic', file: '/broken.vue', line: 1, column: 1, message: 'broken' }
+  it('caches declarations with the type errors of their sources', async () => {
+    const cache = createFileSystemDtsCache({ dir: join(dir, 'type-errors') })
+    const diagnostics: DeclarationDiagnostic[] = [
+      { code: 2322, category: 'error', kind: 'semantic', file: '/broken.vue', line: 1, column: 1, message: 'broken' },
+      { code: 6133, category: 'warning', kind: 'semantic', file: '/clean.vue', line: 2, column: 3, message: 'unused' },
+    ]
+    const runner = vi.fn(fakeRunner({}, diagnostics))
+    const files = [{ id: '/broken.vue', source: 'broken' }, { id: '/clean.vue', source: 'clean' }]
+
+    const first = await emitWith(files, { cwd: dir, cache, runner })
+    expect(first.diagnostics).toEqual(diagnostics)
+    expect(first.files.size).toBe(2)
+
+    runner.mockClear()
+    const second = await emitWith(files, { cwd: dir, cache, runner })
+    expect(runner).not.toHaveBeenCalled()
+    expect(second).toEqual(first)
+  })
+
+  it.each<[string, DeclarationDiagnostic]>([
+    ['declaration emit', { code: 2742, category: 'error', kind: 'declaration', file: '/broken.vue', line: 1, column: 1, message: 'cannot be named' }],
+    ['syntax', { code: 1005, category: 'error', kind: 'syntactic', file: '/broken.vue', line: 1, column: 1, message: `',' expected.` }],
+    ['program option', { code: 5023, category: 'error', kind: 'options', message: 'unknown option' }],
+  ])('does not cache declarations from a run with %s errors', async (name, diagnostic) => {
+    const cache = createFileSystemDtsCache({ dir: join(dir, `errors-${name}`) })
     const runner = vi.fn(fakeRunner({}, [diagnostic]))
     const files = [{ id: '/broken.vue', source: 'broken' }, { id: '/clean.vue', source: 'clean' }]
 
@@ -179,6 +203,24 @@ describe('emitVueDeclarations (caching)', () => {
     const second = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner.mock.calls[0]?.[0]).toEqual(files)
     expect(second.diagnostics).toEqual([diagnostic])
+  })
+
+  it('ignores cache entries it cannot read', async () => {
+    const store = new Map<string, string>()
+    const cache: DtsCache = {
+      getItem: async key => store.get(key),
+      setItem: async (key, value) => void store.set(key, value),
+    }
+    const runner = vi.fn(fakeRunner({ '/a.vue': 'declare const A: 1\n' }))
+    const files = [{ id: '/a.vue', source: 'a' }]
+    await emitWith(files, { cwd: dir, cache, runner })
+    for (const key of store.keys()) {
+      store.set(key, 'declare const A: 1\n')
+    }
+
+    const second = await emitWith(files, { cwd: dir, cache, runner })
+    expect(runner).toHaveBeenCalledTimes(2)
+    expect(dtsOf(second, '/a.vue')).toBe('declare const A: 1\n')
   })
 
   it('also returns `.vue.d.ts` declarations with `emitLegacyDeclarationAlias`', async () => {
@@ -300,6 +342,31 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     const second = await emitVueDeclarations([child, parent('second')], { cwd: root, cache })
     expect(second.diagnostics).toEqual([])
     expect(dtsOf(second, parent('second').id)).toContain('second: ChildProps')
+  })
+
+  it('returns the same declarations and diagnostics from the cache', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'cached-diagnostics')
+    await mkdir(root, { recursive: true })
+    const store = new Map<string, string>()
+    const cache: DtsCache = {
+      getItem: async key => store.get(key),
+      setItem: vi.fn(async (key: string, value: string) => void store.set(key, value)),
+    }
+    const files = [
+      { id: join(root, 'Broken.vue'), source: `<script setup lang="ts">\nconst n: number = 'one'\ndefineProps<{ n: number }>()\n</script>\n<template><div>{{ n }}</div></template>\n` },
+      { id: join(root, 'broken.ts'), source: `export const s: string = 1\n` },
+      { id: join(root, 'clean.ts'), source: `export const t = 'clean' as const\n` },
+    ]
+    for (const { id, source } of files) {
+      await writeFile(id, source)
+    }
+
+    const uncached = await emitVueDeclarations(files, { cwd: root, cache: false })
+    expect(uncached.diagnostics.map(diagnostic => diagnostic.code)).toEqual([2322, 2322])
+    expect(await emitVueDeclarations(files, { cwd: root, cache })).toEqual(uncached)
+    expect(cache.setItem).toHaveBeenCalledTimes(3)
+    expect(await emitVueDeclarations(files, { cwd: root, cache })).toEqual(uncached)
+    expect(cache.setItem).toHaveBeenCalledTimes(3)
   })
 
   it('ignores errors in files other than the emitted SFCs', { timeout: 50_000 }, async () => {
