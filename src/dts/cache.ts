@@ -1,3 +1,5 @@
+import type { DeclarationDiagnostic } from './diagnostics'
+
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -31,6 +33,30 @@ export function hashSources(sources: Array<{ id: string, source: string }>): str
     hash.update(id).update('\0').update(source).update('\0')
   }
   return hash.digest('hex')
+}
+
+export interface DtsCacheEntry {
+  dts: string
+  diagnostics: DeclarationDiagnostic[]
+}
+
+// Bumped when the shape of cached values changes, so entries written in
+// another shape are never read.
+export const CACHE_ENTRY_FORMAT = '2'
+
+export function serializeCacheEntry(entry: DtsCacheEntry): string {
+  return JSON.stringify(entry)
+}
+
+export function parseCacheEntry(value: string): DtsCacheEntry | undefined {
+  try {
+    const entry = JSON.parse(value) as Partial<DtsCacheEntry> | null
+    if (typeof entry?.dts === 'string' && Array.isArray(entry.diagnostics)) {
+      return { dts: entry.dts, diagnostics: entry.diagnostics }
+    }
+  }
+  catch {}
+  return undefined
 }
 
 export function createFileSystemDtsCache(options: { dir: string }): DtsCache {
