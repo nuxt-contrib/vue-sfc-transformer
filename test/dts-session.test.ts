@@ -1,4 +1,6 @@
 import type { CompilerOptions, ResolutionMode, SourceFile } from 'typescript'
+import type { ProgramInputs } from '../src/dts/dependencies'
+import type { SourceFileReuse } from '../src/dts/session'
 
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -121,5 +123,30 @@ describe('reuseSourceFiles', () => {
     const first = run(session, { '/a.ts': 'export const a = 1\n' })
     run(session, { '/b.ts': 'export const b = 1\n' })
     expect(run(session, { '/a.ts': 'export const a = 1\n' })['/a.ts']).not.toBe(first['/a.ts'])
+  })
+
+  it('keeps the program and source files of a project it retains', () => {
+    const session = createVueDeclarationSession()
+    const host = ts.createCompilerHost(options)
+    host.readFile = () => 'export const a = 1\n'
+    const getSourceFile = host.getSourceFile
+    const parse = (reuse: SourceFileReuse) => {
+      host.getSourceFile = getSourceFile
+      const keys = reuse.wrap(host, options)
+      return { keys, sourceFile: host.getSourceFile('/a.ts', ts.ScriptTarget.ESNext) }
+    }
+
+    const first = reuseSourceFiles(session, ts)
+    const { keys, sourceFile } = parse(first)
+    const program = { program: ts.createProgram([], options), inputs: {} as ProgramInputs, sourceFiles: keys }
+    first.keepProgram('a', program)
+    first.commit()
+    const second = reuseSourceFiles(session, ts)
+    second.retainProgram('a')
+    second.commit()
+
+    const third = reuseSourceFiles(session, ts)
+    expect(third.previousProgram('a')).toBe(program)
+    expect(parse(third).sourceFile).toBe(sourceFile)
   })
 })

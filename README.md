@@ -141,7 +141,7 @@ vueSfcPlugin({
 })
 ```
 
-Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved compiler options and `vueCompilerOptions`. The TS program is by far the dominant build cost; a full cache hit skips it entirely. Type errors that leave declarations intact are cached with them and reported again on a hit; a build with errors that affect declarations is not cached.
+Declarations are cached on disk under `<cwd>/node_modules/.cache/vue-sfc-dts/`, keyed by a content hash that incorporates the SFC source, the installed versions of `vue-sfc-transformer` / `@vue/language-core` / `@volar/typescript` / `typescript`, and a hash of the resolved compiler options, `vueCompilerOptions` and tsconfig files. Each declaration is reused while the files it depends on are unchanged: the files it imports, directly or not, and those visible to every file (global declarations and module augmentations, and what they import). Files that TypeScript loads from packages in `node_modules` are not compared. The TS program is by far the dominant build cost; when none of the files a project read changed, its declarations are reused without one. Otherwise, the program emits files in the same order as a build without a cache, up to the last one that changed or depends on a changed declaration, so the result is the same. Type errors that leave declarations intact are cached with them and reported again on a hit; a build with errors that affect declarations is not cached.
 
 Pass `cache: false` to disable. Pass `cacheVersion: '<your-string>'` to namespace the cache under your control on top of the auto-derivation.
 
@@ -200,7 +200,7 @@ const { code } = await transformVueSfc(source, id, {
 
 `script.globalTypeFiles` adds fully resolved files to parse for global types. Both options mirror `@vue/compiler-sfc`'s `compileScript` options.
 
-To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. Within one call, the projects referenced by a tsconfig also share the declaration files they have in common (such as TypeScript's `lib` files and those of libraries), so a session also speeds up a single call with several projects. The session holds the parsed sources of its last call until it is garbage collected.
+To emit declarations repeatedly, as on each rebuild in watch mode, pass the same `session` from `createVueDeclarationSession()` to every call. Each call then only parses the TypeScript sources (including the declarations of the libraries they use) that changed since the previous one. Within one call, the projects referenced by a tsconfig also share the declaration files they have in common (such as TypeScript's `lib` files and those of libraries), so a session also speeds up a single call with several projects. Each call also reuses the module resolutions of the previous one, unless a file was created where a module lookup failed or a `package.json` that module resolution read changed. The session holds the parsed sources and programs of its last call until it is garbage collected.
 
 ```ts
 import type { VueDeclarationSource } from 'vue-sfc-transformer/core'

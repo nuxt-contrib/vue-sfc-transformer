@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createFileSystemDtsCache, createVueDeclarationSession, emitVueDeclarations, isDeclarationEmitDiagnostic } from '../src/core'
+import { hashText } from '../src/dts/cache'
 import { emitDeclarations } from '../src/dts/emit'
 import { loadToolchain } from '../src/dts/toolchain'
 
@@ -28,15 +29,16 @@ describe('emitVueDeclarations (caching)', () => {
   })
 
   function fakeRunner(map: Record<string, string> = {}, diagnostics: DeclarationDiagnostic[] = []): VueTscRunner {
-    return (files) => {
-      const declarations = new Map<string, string>()
-      const fileDiagnostics = new Map<string, DeclarationDiagnostic[]>()
-      for (const f of files) {
-        declarations.set(f.id, map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`)
-        fileDiagnostics.set(f.id, diagnostics.filter(diagnostic => diagnostic.file === f.id))
-      }
-      return { declarations, diagnostics: fileDiagnostics, programDiagnostics: diagnostics.filter(diagnostic => diagnostic.kind === 'options') }
-    }
+    return (files, _options, sources, cached) => ({
+      files: new Map(files.map(f => [f.id, {
+        dts: map[f.id] ?? `declare const _${f.id.length}: ${JSON.stringify(f.source)}\n`,
+        diagnostics: diagnostics.filter(diagnostic => diagnostic.file === f.id),
+        dependencies: {},
+        cached: false,
+      }])),
+      programDiagnostics: diagnostics.filter(diagnostic => diagnostic.kind === 'options'),
+      inputs: cached && [{ ids: files.map(f => f.id), files: Object.fromEntries(sources.map(source => [source.id, hashText(source.source)])), absent: [] }],
+    })
   }
 
   function emitWith(files: VueDeclarationSource[], { runner, ...options }: EmitVueDeclarationsOptions & { runner: VueTscRunner }): Promise<EmitVueDeclarationsResult> {
@@ -136,14 +138,14 @@ describe('emitVueDeclarations (caching)', () => {
     const b = { id: '/b.vue', source: 'B' }
 
     await emitWith([a, b], { cwd: dir, cache, runner })
-    expect(store.size).toBe(2)
+    expect(store.size).toBe(3)
     store.delete([...store.keys()][1]!)
 
     runner.mockClear()
     const both = await emitWith([a, b], { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
-    expect(runner.mock.calls[0]?.[0]).toHaveLength(1)
-    expect(runner.mock.calls[0]?.[2]).toEqual([a, b])
+    expect(runner.mock.calls[0]?.[0]).toEqual([a, b])
+    expect([...runner.mock.calls[0]![3]!.keys()]).toEqual([a.id])
     expect(both.files.size).toBe(2)
   })
 
@@ -252,7 +254,7 @@ describe('emitVueDeclarations (caching)', () => {
     const first = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
     expect(dtsOf(first, '/u.vue')).toBe('declare const U: 1\n')
-    expect(store.size).toBe(1)
+    expect(store.size).toBe(2)
 
     const second = await emitWith(files, { cwd: dir, cache, runner })
     expect(runner).toHaveBeenCalledTimes(1)
@@ -364,9 +366,9 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     const uncached = await emitVueDeclarations(files, { cwd: root, cache: false })
     expect(uncached.diagnostics.map(diagnostic => diagnostic.code)).toEqual([2322, 2322])
     expect(await emitVueDeclarations(files, { cwd: root, cache })).toEqual(uncached)
-    expect(cache.setItem).toHaveBeenCalledTimes(3)
+    expect(cache.setItem).toHaveBeenCalledTimes(4)
     expect(await emitVueDeclarations(files, { cwd: root, cache })).toEqual(uncached)
-    expect(cache.setItem).toHaveBeenCalledTimes(3)
+    expect(cache.setItem).toHaveBeenCalledTimes(4)
   })
 
   it('ignores errors in files other than the emitted SFCs', { timeout: 50_000 }, async () => {
@@ -576,6 +578,45 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     expect(sourceSfc).toContain('sfcSize: "md"')
   })
 
+  it('resolves imports again with a session when a new file changes how they resolve', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-resolution', {
+      'size.ts': `import { size as base } from './sizes'\nexport const size = base\n`,
+      'sizes/index.ts': `export const size = 'sm' as const\n`,
+    })
+    const emitted = sources.filter(source => source.id.endsWith('/size.ts'))
+    const session = createVueDeclarationSession()
+    const emit = async () => {
+      const result = await emitVueDeclarations(emitted, { cwd: root, cache: false, session })
+      expect(result.diagnostics).toEqual([])
+      return result.files.get(join(root, 'size.d.ts'))
+    }
+
+    expect(await emit()).toContain('size: "sm"')
+    expect(await emit()).toContain('size: "sm"')
+    await writeFile(join(root, 'sizes.ts'), `export const size = 'lg' as const\n`)
+    expect(await emit()).toContain('size: "lg"')
+  })
+
+  it('resolves imports again with a session when a `package.json` they use changes', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-package-json', {
+      'package.json': JSON.stringify({ name: 'sizes', imports: { '#size': './sm.ts' } }),
+      'size.ts': `import { size as base } from '#size'\nexport const size = base\n`,
+      'sm.ts': `export const size = 'sm' as const\n`,
+      'lg.ts': `export const size = 'lg' as const\n`,
+    })
+    const emitted = sources.filter(source => source.id.endsWith('/size.ts'))
+    const session = createVueDeclarationSession()
+    const emit = async () => {
+      const result = await emitVueDeclarations(emitted, { cwd: root, cache: false, session })
+      expect(result.diagnostics).toEqual([])
+      return result.files.get(join(root, 'size.d.ts'))
+    }
+
+    expect(await emit()).toContain('size: "sm"')
+    await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'sizes', imports: { '#size': './lg.ts' } }))
+    expect(await emit()).toContain('size: "lg"')
+  })
+
   it('reuses parsed sources with a session', { timeout: 50_000 }, async () => {
     const { root, sources } = await writeFixture('session-parses', {
       'Size.vue': `<script lang="ts">\nimport { size } from './size'\nexport const sfcSize = size\n</script>\n<template><div /></template>\n`,
@@ -625,6 +666,37 @@ describe('emitVueDeclarations (TypeScript sources)', () => {
     const shared = await emit(createVueDeclarationSession())
     expect(shared.result).toEqual(fresh.result)
     expect(shared.parses).toBeLessThan(fresh.parses * 0.75)
+  })
+
+  it('keeps the sources of a project that a call with a session does not emit', { timeout: 50_000 }, async () => {
+    const { root, sources } = await writeFixture('session-retained-project', {
+      'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './app' }, { path: './server' }] }),
+      'app/tsconfig.json': JSON.stringify({ compilerOptions: { lib: ['esnext', 'dom'] }, include: ['.'] }),
+      'app/size.ts': `export const size = document.title\n`,
+      'server/tsconfig.json': JSON.stringify({ compilerOptions: { lib: ['esnext'] }, include: ['.'] }),
+      'server/size.ts': `export const size = [1].at(0)\n`,
+    })
+    const emitted = sources.filter(source => !source.id.endsWith('.json'))
+    const { performance } = loadToolchain(root).ts as unknown as { performance: { enable: () => void, disable: () => void, getCount: (name: string) => number } }
+    const emit = async (session: VueDeclarationSession, files = emitted) => {
+      performance.enable()
+      try {
+        expect((await emitVueDeclarations(files, { cwd: root, tsconfig: 'tsconfig.json', cache: false, session })).diagnostics).toEqual([])
+        return performance.getCount('beforeParse')
+      }
+      finally {
+        performance.disable()
+      }
+    }
+
+    const steady = createVueDeclarationSession()
+    await emit(steady)
+    const parses = await emit(steady)
+
+    const session = createVueDeclarationSession()
+    await emit(session)
+    await emit(session, emitted.filter(source => source.id.includes('/server/')))
+    expect(await emit(session)).toBe(parses)
   })
 
   it('resolves `.vue` imports through `paths`', { timeout: 50_000 }, async () => {

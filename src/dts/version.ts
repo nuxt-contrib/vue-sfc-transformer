@@ -22,8 +22,8 @@ const cache = new Map<string, string>()
 // Compute a cache-key prefix that captures every input to the emitted .d.ts
 // output that lives *outside* the SFC source itself: this package, the Vue
 // language plugin, the Volar program proxy, the TypeScript compiler, and the
-// resolved compiler options and `vueCompilerOptions` (including any `extends`
-// chain from the consumer's tsconfig).
+// resolved compiler options, `vueCompilerOptions` and files (including any
+// `extends` chain from the consumer's tsconfig).
 export function getAutoCacheVersion(inputs: VersionInputs): string {
   const memoKey = `${inputs.rootDir}\0${inputs.tsconfig ?? ''}\0${JSON.stringify(inputs.paths ?? {})}`
   const cached = cache.get(memoKey)
@@ -71,13 +71,14 @@ function hashProjects(toolchain: Toolchain, inputs: VersionInputs): string[] {
     return [
       `vueCompilerOptions=${hash(projects.map(project => project.vueOptions))}`,
       `compilerOptions=${hash(projects.map(project => project.options))}`,
+      `fileNames=${hash(projects.map(project => project.fileNames))}`,
     ]
   }
   catch {
     // If we can't compute the hash (bad tsconfig path that escaped
     // validation, etc.), don't take the whole build down; fall back to a
     // constant so the rest of the auto-version still does its job.
-    return ['vueCompilerOptions=unknown', 'compilerOptions=unknown']
+    return ['vueCompilerOptions=unknown', 'compilerOptions=unknown', 'fileNames=unknown']
   }
 }
 
