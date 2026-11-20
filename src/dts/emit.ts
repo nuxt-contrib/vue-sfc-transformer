@@ -80,6 +80,14 @@ export interface EmitVueDeclarationsOptions {
    * declaration files of libraries between the projects of one call.
    */
   session?: VueDeclarationSession
+  /**
+   * Type check the sources, and report their semantic diagnostics. With
+   * `false`, only syntax errors and declaration emit errors are reported,
+   * and with TypeScript 5.5 or later (`noCheck`) declarations are emitted
+   * without checking each source in full, which is faster. Their members can
+   * then be printed in another order. Defaults to `true`.
+   */
+  typeCheck?: boolean
 }
 
 export interface EmitVueDeclarationsResult {
@@ -104,6 +112,7 @@ interface ResolvedEmitOptions {
   tsconfig?: string
   paths?: Record<string, string[]>
   session?: VueDeclarationSession
+  typeCheck: boolean
 }
 
 interface FileRun {
@@ -187,7 +196,7 @@ const runVueTsc: VueTscRunner = (files, options, sources, cached) => {
   const result: DeclarationRun = { files: new Map(), programDiagnostics: [] }
   for (const [project, group] of groups) {
     const roots = sources.filter(file => projectOf(file) === project)
-    const run = emitProjectDeclarations(toolchain, options.rootDir, project, group, sources, roots, reuse, cached)
+    const run = emitProjectDeclarations(toolchain, options, project, group, sources, roots, reuse, cached)
     for (const [id, file] of run.files) {
       result.files.set(id, file)
     }
@@ -221,7 +230,7 @@ interface ProjectRun {
 
 function emitProjectDeclarations(
   toolchain: Toolchain,
-  rootDir: string,
+  { rootDir, typeCheck }: ResolvedEmitOptions,
   project: DeclarationProject,
   files: VueDeclarationSource[],
   sources: VueDeclarationSource[],
@@ -240,6 +249,7 @@ function emitProjectDeclarations(
     jsx: project.options.jsx ?? ts.JsxEmit.Preserve,
     jsxImportSource: project.options.jsxImportSource ?? 'vue',
     ...DECLARATION_EMIT_OPTIONS,
+    ...!typeCheck && { noCheck: true },
   }
 
   const tsHost = ts.createCompilerHost(compilerOptions)
@@ -296,7 +306,7 @@ function emitProjectDeclarations(
       reuse?.keepProgram(key, { program, inputs, sourceFiles: sourceFileKeys! })
     }
     const tracked = cached && inputs
-    return { ...emitProgramDeclarations(ts, program, files, vfs, tracked, cached), inputs: tracked }
+    return { ...emitProgramDeclarations(ts, program, files, vfs, typeCheck, tracked, cached), inputs: tracked }
   }
   finally {
     // The virtual code of each SFC retains the program that created it.
@@ -315,6 +325,7 @@ function emitProgramDeclarations(
   program: TypeScript.Program,
   files: VueDeclarationSource[],
   vfs: Map<string, string>,
+  typeCheck: boolean,
   inputs: ProgramInputs | undefined,
   cached: Map<string, DtsCacheEntry> | undefined,
 ): Omit<ProjectRun, 'inputs'> {
@@ -337,7 +348,7 @@ function emitProgramDeclarations(
     for (const diagnostic of program.getSyntacticDiagnostics(sourceFile)) {
       diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'syntactic'))
     }
-    for (const diagnostic of program.getSemanticDiagnostics(sourceFile)) {
+    for (const diagnostic of typeCheck ? program.getSemanticDiagnostics(sourceFile) : []) {
       diagnostics.push(toDeclarationDiagnostic(ts, diagnostic, 'semantic'))
     }
     const emitResult = program.emit(sourceFile)
@@ -462,6 +473,7 @@ export async function emitDeclarations(
       ? Object.fromEntries(Object.entries(options.paths).map(([key, targets]) => [key, targets.map(target => resolve(rootDir, target))]))
       : undefined,
     session: options.session,
+    typeCheck: options.typeCheck ?? true,
   }
 
   const cache = options.cache === false
@@ -499,7 +511,7 @@ async function emitCachedDeclarations(
   cache: DtsCache,
   runner: VueTscRunner,
 ): Promise<DeclarationRun> {
-  const version = [getAutoCacheVersion(resolved), cacheVersion, `entry=${CACHE_ENTRY_FORMAT}`].filter(Boolean).join('|')
+  const version = [getAutoCacheVersion(resolved), cacheVersion, `entry=${CACHE_ENTRY_FORMAT}`, !resolved.typeCheck && 'typeCheck=false'].filter(Boolean).join('|')
   const keys = new Map(emitted.map(file => [file.id, hashSfc(file.id, file.source, version)]))
   const manifestKey = hashSfc('manifest', sources.map(file => file.id).sort().join('\0'), version)
   // Both `null` (unstorage convention) and `undefined` count as misses.
