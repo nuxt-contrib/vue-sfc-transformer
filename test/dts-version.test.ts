@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { loadToolchain } from '../src/dts/toolchain'
 import { clearAutoCacheVersionMemo, getAutoCacheVersion } from '../src/dts/version'
 
 const dir = fileURLToPath(new URL('../node_modules/.tmp/dts-version', import.meta.url))
@@ -59,5 +60,14 @@ describe('getAutoCacheVersion', () => {
     const a = getAutoCacheVersion({ rootDir: dir })
     const b = getAutoCacheVersion({ rootDir: dir })
     expect(a).toBe(b)
+  })
+
+  it('uses and memoises the given `typescript` module', () => {
+    const typescript = { ...loadToolchain(dir).ts, version: '5.9.0-custom' }
+    const without = getAutoCacheVersion({ rootDir: dir })
+    const withModule = getAutoCacheVersion({ rootDir: dir, typescript })
+    expect(withModule).toContain('typescript=5.9.0-custom')
+    expect(withModule).not.toBe(without)
+    expect(getAutoCacheVersion({ rootDir: dir, typescript })).toBe(withModule)
   })
 })

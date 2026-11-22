@@ -1,4 +1,6 @@
+import type TypeScript from 'typescript'
 import type { Toolchain } from './toolchain'
+
 import { createHash } from 'node:crypto'
 
 import { createRequire } from 'node:module'
@@ -15,9 +17,10 @@ interface VersionInputs {
   // mixed into the hash. Omit to hash the defaults.
   tsconfig?: string
   paths?: Record<string, string[]>
+  typescript?: typeof TypeScript
 }
 
-const cache = new Map<string, string>()
+const cache = new Map<string, Map<typeof TypeScript | undefined, string>>()
 
 // Compute a cache-key prefix that captures every input to the emitted .d.ts
 // output that lives *outside* the SFC source itself: this package, the Vue
@@ -26,12 +29,12 @@ const cache = new Map<string, string>()
 // `extends` chain from the consumer's tsconfig).
 export function getAutoCacheVersion(inputs: VersionInputs): string {
   const memoKey = `${inputs.rootDir}\0${inputs.tsconfig ?? ''}\0${JSON.stringify(inputs.paths ?? {})}`
-  const cached = cache.get(memoKey)
+  const cached = cache.get(memoKey)?.get(inputs.typescript)
   if (cached !== undefined) {
     return cached
   }
 
-  const toolchain = loadToolchain(inputs.rootDir)
+  const toolchain = loadToolchain(inputs.rootDir, inputs.typescript)
   const parts: string[] = [
     `vue-sfc-transformer=${readSelfVersion()}`,
     `@vue/language-core=${toolchain.versions['@vue/language-core']}`,
@@ -40,7 +43,12 @@ export function getAutoCacheVersion(inputs: VersionInputs): string {
     ...hashProjects(toolchain, inputs),
   ]
   const computed = parts.join('|')
-  cache.set(memoKey, computed)
+  let memo = cache.get(memoKey)
+  if (!memo) {
+    memo = new Map()
+    cache.set(memoKey, memo)
+  }
+  memo.set(inputs.typescript, computed)
   return computed
 }
 

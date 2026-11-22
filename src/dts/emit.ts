@@ -45,6 +45,15 @@ export interface EmitVueDeclarationsOptions {
    */
   tsconfig?: string
   /**
+   * TypeScript module to emit with, the value of `require('typescript')`.
+   * Defaults to the one loaded from the project's `vue-tsc` (v3 or later)
+   * when it has one, else this package's `typescript` peer dependency. Pass
+   * the module your build already loaded to use that copy instead.
+   * `@vue/language-core` and `@volar/typescript` are still loaded as usual
+   * and are passed this module.
+   */
+  typescript?: typeof TypeScript
+  /**
    * Extra `compilerOptions.paths`, with targets relative to `cwd`, taking
    * precedence over the tsconfig's.
    */
@@ -110,6 +119,7 @@ export interface EmitVueDeclarationsResult {
 interface ResolvedEmitOptions {
   rootDir: string
   tsconfig?: string
+  typescript?: typeof TypeScript
   paths?: Record<string, string[]>
   session?: VueDeclarationSession
   typeCheck: boolean
@@ -179,7 +189,7 @@ function declarationPath(id: string): string {
 }
 
 const runVueTsc: VueTscRunner = (files, options, sources, cached) => {
-  const toolchain = loadToolchain(options.rootDir)
+  const toolchain = loadToolchain(options.rootDir, options.typescript)
   const projects = resolveDeclarationProjects(toolchain, options.rootDir, options.tsconfig, options.paths)
   const projectFileNames = projects.map(project => new Set(project.fileNames))
   const projectOf = (file: VueDeclarationSource): DeclarationProject => {
@@ -469,6 +479,7 @@ export async function emitDeclarations(
   const resolved: ResolvedEmitOptions = {
     rootDir,
     tsconfig: options.tsconfig ? resolve(rootDir, options.tsconfig) : undefined,
+    typescript: options.typescript,
     paths: options.paths
       ? Object.fromEntries(Object.entries(options.paths).map(([key, targets]) => [key, targets.map(target => resolve(rootDir, target))]))
       : undefined,
