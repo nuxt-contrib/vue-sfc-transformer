@@ -49,6 +49,6 @@ catalogs:
   peer:
     '@vue/compiler-core': 3.5.46
     esbuild: 0.28.2
-    vue: 3.5.45
+    vue: 3.5.46
   prod:
     tinyglobby: ^0.2.16
