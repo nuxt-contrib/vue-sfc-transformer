@@ -36,7 +36,7 @@ catalogs:
     eslint: 10.15.0
     exsolve: 1.2.0
     installed-check: 11.0.0
-    knip: 6.45.1
+    knip: 6.47.0
     lint-staged: 17.6.2
     mkdist: 2.4.1
     pkg-pr-new: 0.0.94
