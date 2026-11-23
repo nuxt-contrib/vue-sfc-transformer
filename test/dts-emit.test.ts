@@ -285,6 +285,27 @@ describe('emitVueDeclarations (vue-tsc end-to-end)', () => {
     expect(dts).toContain('DefineComponent')
   })
 
+  it('emits with the TypeScript passed as `typescript`', { timeout: 50_000 }, async () => {
+    const root = join(dir, 'typescript-option')
+    await mkdir(root, { recursive: true })
+    const id = join(root, 'Hello.vue')
+    const source = `<script setup lang="ts">defineProps<{ msg: string }>()\n</script><template><div>{{ msg }}</div></template>`
+    await writeFile(id, source)
+
+    const realTs = loadToolchain(root).ts
+    const createProgram = vi.fn(realTs.createProgram)
+    const typescript = new Proxy(realTs, {
+      get(target, property) {
+        return property === 'createProgram' ? createProgram : Reflect.get(target, property, target)
+      },
+    })
+
+    const result = await emitVueDeclarations([{ id, source }], { cwd: root, cache: false, typescript })
+    expect(result.diagnostics).toEqual([])
+    expect(dtsOf(result, id)).toContain('msg')
+    expect(createProgram).toHaveBeenCalled()
+  })
+
   it('emits a declaration for an SFC with a side-effect stylesheet import', { timeout: 50_000 }, async () => {
     const id = join(dir, 'Styled.vue')
     const source = `<script setup lang="ts">import './styled.css'\ndefineProps<{ msg: string }>()\n</script><template><div>{{ msg }}</div></template>`

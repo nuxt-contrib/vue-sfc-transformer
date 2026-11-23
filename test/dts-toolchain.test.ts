@@ -57,4 +57,24 @@ describe('loadToolchain', () => {
     const toolchain = loadToolchain(await fixture('vue-tsc-2', '2.2.0'))
     expect(toolchain.versions['@vue/language-core']).not.toBe('3.0.0-project')
   })
+
+  it('throws when the given `typescript` has no JavaScript API', () => {
+    const typescript = { version: '7.1.0-beta' } as unknown as ReturnType<typeof loadToolchain>['ts']
+    expect(() => loadToolchain(dir, typescript)).toThrowError('TypeScript 7.1.0-beta passed in the `typescript` option has no JavaScript API. Pass the `typescript` option or install TypeScript 5 or 6.')
+  })
+
+  it('throws when the resolved `typescript` has no JavaScript API, unless `typescript` is passed', async () => {
+    const root = await fixture('typescript-7', '3.9.0')
+    await mkdir(join(root, 'node_modules/typescript'), { recursive: true })
+    await writeFile(join(root, 'node_modules/typescript/package.json'), JSON.stringify({ name: 'typescript', version: '7.1.0-beta', main: 'index.js' }))
+    await writeFile(join(root, 'node_modules/typescript/index.js'), 'module.exports = { version: "7.1.0-beta" }')
+
+    expect(() => loadToolchain(root)).toThrowError(`TypeScript 7.1.0-beta loaded from ${join(root, 'node_modules/vue-tsc/package.json')} has no JavaScript API.`)
+
+    const typescript = { ...loadToolchain(dir).ts, version: '5.9.0-custom' }
+    const toolchain = loadToolchain(root, typescript)
+    expect(toolchain.ts).toBe(typescript)
+    expect(toolchain.versions.typescript).toBe('5.9.0-custom')
+    expect(toolchain.versions['@vue/language-core']).toBe('3.0.0-project')
+  })
 })

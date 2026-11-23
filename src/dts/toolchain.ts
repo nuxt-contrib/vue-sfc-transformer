@@ -13,18 +13,23 @@ export interface Toolchain {
   versions: Record<'@vue/language-core' | '@volar/typescript' | 'typescript', string>
 }
 
-const toolchains = new Map<string, Toolchain>()
+const toolchains = new Map<string, Map<typeof TypeScript, Toolchain>>()
 
 // TypeScript, `@volar/typescript` and `@vue/language-core` are loaded from
 // the project's `vue-tsc` (v3 or later) when it has one, so declarations are
 // checked the way `vue-tsc` checks the project. Otherwise they are this
-// package's peer dependencies.
-export function loadToolchain(rootDir: string): Toolchain {
+// package's peer dependencies. A `typescript` module passed to `loadToolchain`
+// is used in place of the one resolved from `vue-tsc`.
+export function loadToolchain(rootDir: string, typescript?: typeof TypeScript): Toolchain {
   const base = resolveVueTsc(rootDir) ?? import.meta.url
-  let toolchain = toolchains.get(base)
+  const require = createRequire(base)
+  const ts = typescript ?? (require('typescript') as typeof TypeScript)
+  let toolchain = toolchains.get(base)?.get(ts)
   if (!toolchain) {
-    const require = createRequire(base)
-    const ts = require('typescript') as typeof TypeScript
+    if (typeof ts.createProgram !== 'function') {
+      const source = typescript ? 'passed in the `typescript` option' : `loaded from ${base}`
+      throw new Error(`[vue-sfc-transformer] TypeScript ${readTypeScriptVersion(ts)} ${source} has no JavaScript API. Pass the \`typescript\` option or install TypeScript 5 or 6.`)
+    }
     toolchain = {
       ts,
       volarTs: require('@volar/typescript'),
@@ -35,9 +40,18 @@ export function loadToolchain(rootDir: string): Toolchain {
         'typescript': ts.version,
       },
     }
-    toolchains.set(base, toolchain)
+    let byBase = toolchains.get(base)
+    if (!byBase) {
+      byBase = new Map()
+      toolchains.set(base, byBase)
+    }
+    byBase.set(ts, toolchain)
   }
   return toolchain
+}
+
+function readTypeScriptVersion(ts: typeof TypeScript): string {
+  return (ts as { version?: string }).version ?? 'unknown'
 }
 
 // Before 3.3.6, `@vue/language-core` caches the TypeScript AST of each SFC
